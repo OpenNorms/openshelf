@@ -1,0 +1,35 @@
+name: OpenShelf lint
+description: Lint OpenShelf knowledge bases; findings are annotated on the offending files.
+inputs:
+  paths:
+    description: "KB paths to lint, space-separated."
+    default: "."
+  strict:
+    description: "Fail on warnings too."
+    default: "false"
+  version:
+    description: "Install this PyPI version of openshelf instead of the tool source at the action's ref."
+    default: ""
+  python-version:
+    description: "Python version to run the tool with."
+    default: "3.13"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install openshelf
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          pip install "openshelf==${{ inputs.version }}"
+        else
+          pip install "${{ github.action_path }}/.."
+        fi
+    - name: Lint
+      shell: bash
+      env:
+        LINT_PATHS: ${{ inputs.paths }}
+        LINT_STRICT: ${{ inputs.strict }}
+      run: python "${{ github.action_path }}/annotate.py"
