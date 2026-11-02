@@ -23,6 +23,7 @@ _INLINE_CODE = re.compile(r"`[^`\n]*`")
 _WIKILINK = re.compile(r"\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
 _MDLINK = re.compile(r"\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
 _SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
+_SHORTHAND = re.compile(r"^([a-z0-9]+(?:-[a-z0-9]+)*):(.+)$")
 
 
 class KBError(Exception):
@@ -44,7 +45,7 @@ class Page:
 @dataclass
 class Link:
     raw: str  # the link as written
-    kind: str  # page | subindex | file | external | kb | missing | ambiguous
+    kind: str  # page | subindex | file | external | kb | missing | ambiguous | badprefix
     target: str | None = None  # page id, sub-index path, or "<kb-id>/<page-id>"
 
 
@@ -100,6 +101,16 @@ class KB:
     @property
     def profile(self) -> str:
         return str(self.manifest.get("profile", "wiki"))
+
+    @property
+    def visibility(self) -> str:
+        v = self.manifest.get("visibility")
+        return v if v in ("public", "internal", "private") else "public"
+
+    @property
+    def url(self) -> str | None:
+        u = self.manifest.get("url")
+        return u if isinstance(u, str) and u else None
 
     def path(self, key: str) -> Path:
         return (self.root / self.layout[key]).resolve()
@@ -180,6 +191,15 @@ class KB:
                 return Link(raw, "subindex", str(t))
             return Link(raw, "file") if t.exists() else Link(raw, "missing")
 
+        if target.startswith("kb://"):
+            return Link(raw, "kb", target[len("kb://"):])
+        shorthand = _SHORTHAND.match(target)
+        if shorthand and shorthand.group(1) in (self.manifest.get("depends") or []):
+            # [[<kb-id>:<page-id>]] — the §4.4 prefix shorthand for kb://.
+            page_id = shorthand.group(2)
+            if page_id.endswith(".md"):
+                page_id = page_id[:-3]
+            return Link(raw, "kb", f"{shorthand.group(1)}/{page_id}")
         name = target[:-3] if target.endswith(".md") else target
         if not name:
             return Link(raw, "missing")
@@ -196,7 +216,13 @@ class KB:
                 if name in (p.relative_to(pages_dir).with_suffix("").as_posix(), p.stem)]
         if not hits and len(subs) == 1:
             return Link(raw, "subindex", str(subs[0]))
-        return Link(raw, "ambiguous" if hits or subs else "missing")
+        if hits or subs:
+            return Link(raw, "ambiguous")
+        if shorthand:
+            # Shaped like [[<kb-id>:<page-id>]] but the prefix is not a KB in
+            # depends (and no local page carries the name): flag it for lint.
+            return Link(raw, "badprefix", shorthand.group(1))
+        return Link(raw, "missing")
 
     def follow(self, page_id: str) -> str | None:
         """Follow redirect stubs; return the final page id, or None if broken."""

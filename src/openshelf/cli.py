@@ -27,7 +27,7 @@ def _lint(args: argparse.Namespace) -> int:
 def _init(args: argparse.Namespace) -> int:
     root = Path(args.path)
     init(root, id=args.id or root.resolve().name, title=args.title or args.id or root.resolve().name,
-         description=args.description, license=args.license)
+         description=args.description, license=args.license, visibility=args.visibility)
     print(f"Created KB in {root}")
     return 0
 
@@ -70,7 +70,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--id", help="KB id (default: directory name)")
     p.add_argument("--title")
     p.add_argument("--description", required=True, help="one-line L0 description, at most 300 characters")
-    p.add_argument("--license", default="CC-BY-4.0", help="SPDX id for the content (default: CC-BY-4.0)")
+    p.add_argument("--license", default=None, help="SPDX id for the content (default: CC-BY-4.0, or none when --visibility private)")
+    p.add_argument("--visibility", choices=["public", "internal", "private"], default=None,
+                   help="who the KB may be shared with (default: public); non-public KBs stay out of committed project files")
     p.set_defaults(func=_init)
 
     p = sub.add_parser("lint", help="check KBs against the spec")

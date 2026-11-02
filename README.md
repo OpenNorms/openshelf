@@ -14,7 +14,7 @@ The gist leaves layout, page formats and tooling open, and OpenShelf keeps it th
 
 ## Contents
 
-- [`SPEC.md`](SPEC.md): the v1.2 spec — also published, with the schemas, at [hexsecs.github.io/openshelf](https://hexsecs.github.io/openshelf/)
+- [`SPEC.md`](SPEC.md): the v1.3 spec — also published, with the schemas, at [hexsecs.github.io/openshelf](https://hexsecs.github.io/openshelf/)
 - [`CHANGELOG.md`](CHANGELOG.md): the spec's release history (every spec change bumps the version, §10)
 - [`schemas/`](schemas/): JSON Schemas for `kb.yaml`, page frontmatter and `.openshelf/kbs.yaml`
 - [`src/openshelf/`](src/openshelf/): the `openshelf` command-line tool
@@ -75,7 +75,7 @@ The same works for page frontmatter with `page.schema.json`, a project's
 
 ## Status
 
-Stable — spec v1.2. Changes to the spec are released as new spec versions and
+Stable — spec v1.3. Changes to the spec are released as new spec versions and
 recorded in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License

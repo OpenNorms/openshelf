@@ -19,13 +19,18 @@
     "sources": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "url": { "type": "string" },
-          "path": { "type": "string" },
-          "retrieved": { "type": "string", "format": "date" }
-        },
-        "anyOf": [{ "required": ["url"] }, { "required": ["path"] }]
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string" },
+              "path": { "type": "string" },
+              "retrieved": { "type": "string", "format": "date" }
+            },
+            "anyOf": [{ "required": ["url"] }, { "required": ["path"] }]
+          }
+        ]
       }
     },
     "redirect": { "type": "string", "minLength": 1 },
