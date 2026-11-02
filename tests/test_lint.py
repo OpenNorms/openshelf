@@ -2,8 +2,12 @@ from pathlib import Path
 
 import pytest
 
+import yaml
+
 from conftest import EXAMPLES, page, write
+from openshelf import project
 from openshelf.init import init
+from openshelf.kb import mint_uid
 from openshelf.lint import lint
 
 
@@ -259,4 +263,118 @@ def test_type_required_fields(kb):
     assert "wiki/b.md: type 'meeting' requires field 'date'" in errs
     assert "wiki/b.md: type 'meeting' requires field 'attendees'" in errs
     write(kb / "wiki/b.md", page("B", date="2026-10-31", attendees="[phil]").replace("type: concept", "type: meeting"))
+    assert lint(kb) == []
+
+
+@pytest.fixture
+def composed_project(tmp_path: Path) -> tuple[Path, dict[str, str]]:
+    kb_a = init(tmp_path / "kb-a", id="kb-a", title="KB A", description="First test KB.")
+    write(kb_a / "wiki/can-fd.md", page("CAN FD"))
+    kb_b = init(tmp_path / "kb-b", id="kb-b", title="KB B", description="Second test KB.")
+    write(kb_b / "wiki/can-tools.md", page("CAN tools"))
+
+    root = tmp_path / "project"
+    root.mkdir()
+    project.add(root, str(kb_a))
+    project.add(root, str(kb_b))
+    project.sync(root)
+    uids = {
+        kb_id: yaml.safe_load((kb_root / "kb.yaml").read_text())["uid"]
+        for kb_id, kb_root in (("kb-a", kb_a), ("kb-b", kb_b))
+    }
+    return root, uids
+
+
+def write_relations(root: Path, text: str) -> Path:
+    return write(root / ".openshelf/relations.yaml", text)
+
+
+def test_relation_overlay_accepts_id_and_uid_endpoints(composed_project):
+    root, uids = composed_project
+    write_relations(root, f"""relations:
+  - from: kb://kb-a/can-fd
+    to: kb://uid:{uids['kb-b']}/can-tools
+    type: related
+  - from: kb://uid:{uids['kb-a']}/can-fd
+    to: kb://kb-b/can-tools
+    type: same-as
+""")
+    assert lint(root) == []
+
+
+def test_relation_overlay_rejects_dangling_page(composed_project):
+    root, _uids = composed_project
+    write_relations(root, """relations:
+  - from: kb://kb-a/no-such-page
+    to: kb://kb-b/can-tools
+    type: related
+""")
+    errs = errors(root)
+    assert len(errs) == 1
+    assert errs[0].startswith(".openshelf/relations.yaml: relation 1: from endpoint")
+    assert "page 'no-such-page' in KB 'kb-a'" in errs[0]
+    assert "does not exist at the pinned revision" in errs[0]
+
+
+def test_relation_overlay_rejects_unconnected_kb(composed_project):
+    root, _uids = composed_project
+    write_relations(root, """relations:
+  - from: kb://kb-a/can-fd
+    to: kb://not-connected/can-tools
+    type: related
+""")
+    errs = errors(root)
+    assert len(errs) == 1
+    assert errs[0].startswith(".openshelf/relations.yaml: relation 1: to endpoint")
+    assert "KB 'not-connected'" in errs[0]
+    assert "not connected in kbs.lock" in errs[0]
+
+
+def test_relation_overlay_rejects_unrecorded_uid(composed_project):
+    root, _uids = composed_project
+    unknown_uid = mint_uid()
+    write_relations(root, f"""relations:
+  - from: kb://uid:{unknown_uid}/can-fd
+    to: kb://kb-b/can-tools
+    type: related
+""")
+    errs = errors(root)
+    assert len(errs) == 1
+    assert errs[0].startswith(".openshelf/relations.yaml: relation 1: from endpoint")
+    assert f"uid '{unknown_uid}'" in errs[0]
+    assert "not recorded in kbs.lock" in errs[0]
+
+
+def test_relation_overlay_schema_errors_are_lint_errors(composed_project):
+    root, _uids = composed_project
+    write_relations(root, """relations:
+  - from: kb://kb-a/can-fd
+    to: kb://kb-b/can-tools
+""")
+    errs = errors(root)
+    assert len(errs) == 1
+    assert errs[0].startswith(".openshelf/relations.yaml: relations/0: 'type' is a required property")
+
+
+def test_relation_overlay_malformed_yaml_is_a_lint_error(composed_project):
+    root, _uids = composed_project
+    write_relations(root, "relations: [\n")
+    errs = errors(root)
+    assert len(errs) == 1
+    assert errs[0].startswith(".openshelf/relations.yaml: invalid YAML:")
+
+
+def test_project_without_relation_overlay_lints_as_before(composed_project):
+    root, _uids = composed_project
+    errs = errors(root)
+    assert len(errs) == 1
+    assert "no kb.yaml" in errs[0]
+
+
+def test_plain_kb_ignores_relation_overlay_without_project(kb):
+    write_relations(kb, """relations:
+  - from: kb://missing-kb/missing-page
+    to: kb://other-kb/other-page
+    type: related
+""")
     assert lint(kb) == []
