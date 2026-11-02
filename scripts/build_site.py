@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the published spec site (https://hexsecs.github.io/openshelf/).
+"""Build the published spec site (https://opennorms.github.io/openshelf/).
 
 Assembles a static site in _site/:
   index.html                 landing page linking everything
@@ -114,7 +114,7 @@ def main() -> int:
     )
     landing = f"""<h1>OpenShelf</h1>
 <p>An open standard for LLM-maintained knowledge bases (the LLM Wiki pattern).
-Source: <a href="https://github.com/hexsecs/openshelf">github.com/hexsecs/openshelf</a>.</p>
+Source: <a href="https://github.com/OpenNorms/openshelf">github.com/OpenNorms/openshelf</a>.</p>
 <h2>Specification</h2>
 <ul>{version_links}</ul>
 <h2>Schemas</h2>
