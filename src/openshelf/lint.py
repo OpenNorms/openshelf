@@ -45,12 +45,22 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4
 
 
+def _schema_errors(name: str, data: object) -> list[tuple[list, str]]:
+    return [(list(e.absolute_path), e.message) for e in validator(name).iter_errors(data)]
+
+
 def _schema_messages(name: str, data: object) -> list[str]:
     out = []
-    for e in validator(name).iter_errors(data):
-        loc = "/".join(str(p) for p in e.absolute_path)
-        out.append(f"{loc}: {e.message}" if loc else e.message)
+    for path, message in _schema_errors(name, data):
+        loc = "/".join(str(p) for p in path)
+        out.append(f"{loc}: {message}" if loc else message)
     return out
+
+
+# Page fields the spec marks REQUIRED (§4.2). A schema problem in one of
+# these is a lint error; a shape problem in a SHOULD or OPTIONAL field is a
+# warning (§4.2 severity rule, issue #38).
+PAGE_MUST_FIELDS = {"title", "summary", "redirect"}
 
 
 def lint(root: str | Path) -> list[Issue]:
@@ -97,6 +107,8 @@ def lint(root: str | Path) -> list[Issue]:
                 other = link.target.split("/", 1)[0]
                 if other != kb.id and other not in depends:
                     warn(rel(path), f"links into KB '{other}', which is not listed in depends")
+            elif link.kind == "badprefix":
+                warn(rel(path), f"wikilink {link.raw} looks like a cross-KB link into '{link.target}', which is not listed in depends")
         return found
 
     # Pages reachable from the index, directly or through sub-indexes.
@@ -119,12 +131,32 @@ def lint(root: str | Path) -> list[Issue]:
             err(where, f"invalid frontmatter: {meta['__error__']}")
             continue
         meta = json.loads(json.dumps(meta, default=str))
-        for msg in _schema_messages("page.schema.json", meta):
-            err(where, msg)
+        for path, message in _schema_errors("page.schema.json", meta):
+            loc = "/".join(str(p) for p in path)
+            text = f"{loc}: {message}" if loc else message
+            if not path or str(path[0]) in PAGE_MUST_FIELDS:
+                err(where, text)
+            else:
+                warn(where, text)
         if page.redirect:
             if kb.follow(pid) is None:
                 err(where, f"redirect to missing page '{page.redirect}'")
             continue
+        sources = meta.get("sources")
+        if isinstance(sources, list):
+            for src in sources:
+                spath = None
+                if isinstance(src, str):
+                    if "://" not in src:  # string shorthand: no scheme means a path (§4.2)
+                        spath = src
+                elif isinstance(src, dict) and isinstance(src.get("path"), str):
+                    spath = src["path"]
+                if spath is None:
+                    continue
+                if spath.startswith("/") or ".." in Path(spath).parts:
+                    err(where, f"sources path '{spath}' points outside the KB")
+                elif not (kb.root / spath).exists():
+                    warn(where, f"sources path '{spath}' not found in the KB")
         check_links(page.path, page.body)
         if pid not in reachable:
             err(where, "not reachable from the index")

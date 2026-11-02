@@ -162,6 +162,48 @@ def test_depth_budgets(kb):
     assert not any("over the L2 budget" in w for w in warnings(kb))
 
 
-def test_invalid_depth_is_a_schema_error(kb):
+def test_invalid_depth_is_a_warning(kb):
+    # depth is OPTIONAL, so a bad value is a warning under §4.2's severity
+    # rule (#38), not an error.
     write(kb / "wiki/b.md", page("B", depth="huge"))
-    assert any("depth" in e for e in errors(kb))
+    assert errors(kb) == []
+    assert any("depth" in w for w in warnings(kb))
+
+
+def test_advisory_field_shape_is_a_warning(kb):
+    write(kb / "wiki/b.md", page("B", sources="[42]"))
+    assert errors(kb) == []
+    assert any("sources" in w for w in warnings(kb))
+
+
+def test_sources_string_shorthand(kb):
+    write(kb / "raw/note.md", "raw\n")
+    write(kb / "wiki/a.md", page("A", sources="[https://example.com/post, raw/note.md]"))
+    assert lint(kb) == []
+
+
+def test_sources_missing_path_is_a_warning(kb):
+    write(kb / "wiki/a.md", page("A", sources="[{path: raw/gone.md, retrieved: 2026-10-31}]"))
+    assert errors(kb) == []
+    assert "wiki/a.md: sources path 'raw/gone.md' not found in the KB" in warnings(kb)
+
+
+def test_sources_path_outside_kb_is_an_error(kb):
+    write(kb / "wiki/a.md", page("A", sources="[{path: ../secret.md}]"))
+    assert "wiki/a.md: sources path '../secret.md' points outside the KB" in errors(kb)
+
+
+def test_kb_wikilink_form(kb):
+    write(kb / "wiki/b.md", page("B", body="See [[kb://other/page|Other]]."))
+    assert warnings(kb) == ["wiki/b.md: links into KB 'other', which is not listed in depends"]
+    with open(kb / "kb.yaml", "a") as f:
+        f.write("depends: [other]\n")
+    assert lint(kb) == []
+
+
+def test_kb_shorthand_wikilink(kb):
+    write(kb / "wiki/b.md", page("B", body="See [[other:page]]."))
+    assert warnings(kb) == ["wiki/b.md: wikilink [[other:page]] looks like a cross-KB link into 'other', which is not listed in depends"]
+    with open(kb / "kb.yaml", "a") as f:
+        f.write("depends: [other]\n")
+    assert lint(kb) == []

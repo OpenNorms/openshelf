@@ -1,4 +1,4 @@
-# OpenShelf Specification — v1.2
+# OpenShelf Specification — v1.3
 
 OpenShelf standardizes the **LLM Wiki** pattern described by Andrej Karpathy
 ([gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)).
@@ -52,7 +52,7 @@ A KB is a directory with a `kb.yaml` file at its root. This file is the only
 fixed path in the spec.
 
 ```yaml
-openshelf: "1.2"                 # REQUIRED  spec version
+openshelf: "1.3"                 # REQUIRED  spec version
 id: awesome-can-bus           # REQUIRED  [a-z0-9-], unique per publisher
 uid: 0193f8c2-7a1b-7c3d-8e4f-5a6b7c8d9e0f  # SHOULD  UUID, minted once, never changes
 title: Awesome CAN bus        # REQUIRED
@@ -73,10 +73,29 @@ license: CC-BY-4.0            # SHOULD    SPDX id for the content; CC-BY-4.0 rec
 maintainers: [hexsecs]        # SHOULD
 tags: [can, automotive]       # OPTIONAL
 depends: []                   # OPTIONAL  ids of KBs this one links into
+visibility: public            # OPTIONAL  public | internal | private; default public
+url: https://example.org/kb/  # OPTIONAL  published base URL of this KB, see §4.4
 ```
 
 If `license` is absent, consumers MUST NOT assume one. `openshelf init` uses
-CC-BY-4.0 unless told otherwise.
+CC-BY-4.0 unless told otherwise. Content that is not openly licensed MAY
+carry an SPDX `LicenseRef-<name>` identifier instead of a standard SPDX id.
+`openshelf init` MUST skip the CC-BY-4.0 default when `--visibility private`
+is given: private content is not openly licensed by default, so no license
+is claimed for it.
+
+`visibility` says who a KB may be shared with: `public` (anyone), `internal`
+(a bounded group, such as one organization), or `private` (its owner only).
+It is OPTIONAL and defaults to `public`. The value is the KB's own
+declaration, and tools MUST honour it when they connect the KB to a project
+(§6): a non-public KB's L0 text and paths are exactly the kind of thing that
+would otherwise be copied into a project's committed files without anyone
+deciding to share them.
+
+A KB MAY declare its published base `url` — the canonical site where the KB
+is rendered, if it has one. Cross-KB links use it as a fallback target when
+the KB is not connected (§4.4), and a project MAY record it in
+`.openshelf/kbs.lock` alongside the pinned revision.
 
 A KB SHOULD also carry a `uid`: a UUID minted once, when the KB is created,
 and never changed afterwards — the same rule as a page's `uid` (§4.1), one
@@ -167,10 +186,24 @@ And SHOULD have:
 | `created` | Date the page first entered the KB (`YYYY-MM-DD`); set once; MUST NOT change |
 | `updated` | Date of last substantive change (`YYYY-MM-DD`)                    |
 | `depth`   | How much authored depth the page carries, see §4.5                |
-| `sources` | List of `{url or path, retrieved}` backing the page's claims      |
+| `sources` | List of `{url or path, retrieved}` backing the page's claims, or plain strings (below) |
 
 Any other fields (`tags`, `aliases`, `related`, Dataview fields, profile
 fields) MAY be present; consumers MUST ignore fields they do not understand.
+
+A `sources` entry MAY be a plain string instead of an object: a string
+containing `://` is shorthand for `{url: <string>}`, and any other string
+is shorthand for `{path: <string>}`. Consumers MUST accept both forms. A
+`path` — in either form — is relative to the KB root, uses `/` separators,
+and MUST NOT point outside the KB: the same rule as §2's `layout` paths, so
+a citation stays valid when the page moves. Lint SHOULD check that a cited
+path exists.
+
+Validators MUST grade schema findings by the field's normative level: a
+violation in a REQUIRED field (`title`, `summary`, `redirect`) is an error,
+while a shape problem in a SHOULD or OPTIONAL field is a warning. The
+schema is the contract for the required core; advisory fields must not make
+an otherwise conforming page fail.
 
 Schema: [`schemas/page.schema.json`](schemas/page.schema.json).
 
@@ -197,9 +230,20 @@ Inside a KB, pages MAY use either style; consumers MUST resolve both:
   id matches; if none does, to the only page with that file name; otherwise
   the wikilink is ambiguous and lint SHOULD flag it.
 
-Links **to another KB** MUST use `kb://<kb-id>/<page-id>`. Consumers MUST
-resolve them only when that KB is connected, and otherwise MUST show the
-link text.
+Links **to another KB** MUST use `kb://<kb-id>/<page-id>`, in either link
+style: as a Markdown link, `[label](kb://other-kb/concepts/foo)`, or as a
+wikilink, `[[kb://other-kb/concepts/foo|label]]`. Consumers MUST resolve
+both forms. A wikilink MAY instead use the prefix shorthand
+`[[<kb-id>:<page-id>]]`, which means exactly `kb://<kb-id>/<page-id>`; the
+shorthand is valid only when `<kb-id>` is listed in the linking KB's
+`depends`, so it cannot be confused with a local page whose name contains
+a colon. Lint SHOULD flag a shorthand-shaped wikilink whose prefix is not
+listed in `depends`.
+
+Consumers MUST resolve a cross-KB link only when that KB is connected.
+When it is not, a renderer MUST show the link text — unless the target
+KB's published base `url` (§2) is known, for example from `kbs.lock`, in
+which case the renderer MAY link to `<url>/<page-id>` instead.
 
 A moved page MAY leave a stub at its old path with `redirect: <new-id>` in its
 frontmatter and no body. Consumers MUST follow it.
@@ -259,8 +303,10 @@ The design choices behind the four:
   if everything is deep, the ladder carries no signal.
 - **Absent `depth`, the `full` budget applies.** Depth is OPTIONAL; a KB
   that never uses it sees one change, the default L2 budget of 2,500
-  tokens. If `depth` is absent, consumers MUST apply the `full` budget, and
-  consumers MUST treat any other `depth` value as a schema error.
+  tokens. If `depth` is absent, consumers MUST apply the `full` budget. Any
+  other `depth` value is invalid: consumers MUST NOT apply a budget for it
+  (the `full` budget applies) and validators MUST flag it — as a warning,
+  per §4.2's severity rule for OPTIONAL fields.
 
 Dates in frontmatter are deliberately three distinct facts: `created`
 (when the page first entered the KB; set once, never changes), `updated`
@@ -289,7 +335,7 @@ The index MAY be written by hand, by the LLM, or generated from frontmatter.
 A project lists its KBs in `.openshelf/kbs.yaml`:
 
 ```yaml
-openshelf: "1.2"
+openshelf: "1.3"
 kbs:
   - id: awesome-can-bus
     source: github:hexsecs/awesome-can-bus   # github:owner/repo, git URL, or local path
@@ -305,11 +351,19 @@ A tool (CLI, MCP server or agent hook) then:
 
 1. MUST fetch each KB into `.openshelf/cache/<id>/` (gitignored), pinned in
    `.openshelf/kbs.lock`.
-2. MUST write `.openshelf/context.md`: one block per KB with its L0 text, the
-   `use` hint, and the resolved path of its index.
+2. MUST write `.openshelf/context.md`: one block per public KB with its L0
+   text, the `use` hint, and the resolved path of its index.
 3. The project's `AGENTS.md` / `CLAUDE.md` MUST include or link
    `.openshelf/context.md`, so the agent always sees L0 for every KB and knows
    how to go deeper.
+
+`context.md` is a committed file, so a connected KB whose `visibility` (§2)
+is not `public` MUST NOT have its L0 text, `use` hint, or paths written
+into it. A tool MUST either write that KB's block to a gitignored file —
+`.openshelf/context.local.md`, which the tool MUST add to
+`.openshelf/.gitignore` and which `context.md` points to by KB id only — or
+refuse to connect the KB, telling the user why. A KB's visibility is its
+owner's declaration; connecting a KB MUST NOT silently publish it.
 
 A project MUST treat connected KBs as read-only. Knowledge gained while
 working on the project MUST be contributed back to a KB through that KB's own

@@ -81,3 +81,49 @@ def test_git_url():
     assert project.git_url("github:hexsecs/kb") == "https://github.com/hexsecs/kb.git"
     assert project.git_url("git@github.com:a/b.git") == "git@github.com:a/b.git"
     assert project.git_url("../local") is None
+
+
+def _local_kb(tmp_path: Path, extra: str = "") -> Path:
+    from openshelf.init import init
+
+    kb = init(tmp_path / "secret-kb", id="secret-kb", title="Secret KB", description="Classified things.")
+    if extra:
+        with open(kb / "kb.yaml", "a") as f:
+            f.write(extra)
+    return kb
+
+
+def test_private_kb_stays_out_of_committed_context(tmp_path):
+    kb = _local_kb(tmp_path, "visibility: private\n")
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    project.add(proj, str(kb))
+    project.sync(proj)
+    context = (proj / ".openshelf/context.md").read_text()
+    assert "Classified things." not in context
+    assert ".openshelf/cache" not in context and "secret-kb/index.md" not in context
+    assert "## secret-kb" in context  # id + pointer only
+    local = (proj / ".openshelf/context.local.md").read_text()
+    assert "Classified things." in local
+    assert (proj / ".openshelf/.gitignore").read_text() == "cache/\ncontext.local.md\n"
+
+
+def test_lock_records_kb_url(tmp_path):
+    kb = _local_kb(tmp_path, "url: https://example.org/secret-kb/\n")
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    project.add(proj, str(kb))
+    project.sync(proj)
+    lock = yaml.safe_load((proj / ".openshelf/kbs.lock").read_text())
+    assert lock["kbs"]["secret-kb"]["url"] == "https://example.org/secret-kb/"
+
+
+def test_init_visibility_private_skips_license_default(tmp_path):
+    assert main(["init", str(tmp_path / "kb"), "--description", "D.", "--visibility", "private"]) == 0
+    manifest = yaml.safe_load((tmp_path / "kb/kb.yaml").read_text())
+    assert manifest["visibility"] == "private"
+    assert "license" not in manifest
+    assert main(["init", str(tmp_path / "kb2"), "--description", "D."]) == 0
+    manifest = yaml.safe_load((tmp_path / "kb2/kb.yaml").read_text())
+    assert manifest["license"] == "CC-BY-4.0"
+    assert "visibility" not in manifest

@@ -31,7 +31,8 @@ Run `openshelf lint`, then look for contradictions, stale claims, missing pages 
 """
 
 
-def init(root: str | Path, *, id: str, title: str, description: str, license: str = "CC-BY-4.0") -> Path:
+def init(root: str | Path, *, id: str, title: str, description: str,
+         license: str | None = None, visibility: str | None = None) -> Path:
     root = Path(root)
     if (root / MANIFEST).exists():
         raise FileExistsError(f"{root / MANIFEST} already exists")
@@ -39,7 +40,16 @@ def init(root: str | Path, *, id: str, title: str, description: str, license: st
     (root / "wiki").mkdir(exist_ok=True)
     (root / "raw").mkdir(exist_ok=True)
     (root / "raw" / ".gitkeep").touch()
-    manifest = {"openshelf": SPEC_VERSION, "id": id, "title": title, "description": description, "license": license, "maintainers": []}
+    manifest: dict = {"openshelf": SPEC_VERSION, "id": id, "title": title, "description": description}
+    if visibility is not None:
+        manifest["visibility"] = visibility
+    # The CC-BY-4.0 default is skipped for a private KB (§2): its content is
+    # not openly licensed by default, so no license is claimed for it.
+    if license is None and visibility != "private":
+        license = "CC-BY-4.0"
+    if license is not None:
+        manifest["license"] = license
+    manifest["maintainers"] = []
     (root / MANIFEST).write_text(yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8")
     for name, text in {
         "AGENTS.md": AGENTS_TEMPLATE.format(spec=SPEC_VERSION),

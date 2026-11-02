@@ -11,6 +11,37 @@ ones.
 
 ## [Unreleased]
 
+## [1.3] - 2026-11-02
+
+### Added
+
+- §2: an optional `visibility` field for kb.yaml (`public` | `internal` |
+  `private`, default `public`). In §6, a non-public KB's L0 text, `use`
+  hint, and paths MUST NOT be written into the committed
+  `.openshelf/context.md`; they go to a gitignored
+  `.openshelf/context.local.md` instead, or the tool refuses. `openshelf
+  init --visibility` scaffolds the field and skips the CC-BY-4.0 license
+  default for private KBs, and §2 notes SPDX `LicenseRef-<name>` for
+  content that is not openly licensed (#37).
+- §2: an optional `url` field for kb.yaml — the KB's published base URL.
+  §6 sync records it in `kbs.lock`, and §4.4 renderers MAY use it as the
+  target of a cross-KB link whose KB is not connected (#40).
+- §4.4: the prefix shorthand `[[<kb-id>:<page-id>]]` for cross-KB
+  wikilinks, valid only when the KB id is listed in `depends` (#40).
+
+### Changed
+
+- §4.2: `sources` entries MAY be plain strings — a string containing
+  `://` is a URL, any other string is a path. Validators MUST grade
+  schema findings by normative level: violations in REQUIRED fields are
+  errors; shape problems in SHOULD or OPTIONAL fields are warnings (#38).
+- §4.2: `sources[].path` is now defined — relative to the KB root, `/`
+  separators, MUST NOT point outside the KB; lint checks that the cited
+  file exists (#39).
+- §4.4: cross-KB links are now defined in both link styles — Markdown
+  `[label](kb://…)` and wikilink `[[kb://…|label]]` — and consumers MUST
+  resolve both (#40).
+
 ## [1.2] - 2026-11-02
 
 ### Changed

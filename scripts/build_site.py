@@ -26,6 +26,7 @@ OUT = ROOT / "_site"
 ARCHIVES = {
     "1.0": "286f964",
     "1.1": "5043e02",
+    "1.2": "2f80082",
 }
 
 SHELL = """<!DOCTYPE html>
