@@ -34,8 +34,8 @@ def test_create_undeclared_defaults_into_sources_dir(tmp_path):
     assert result["dropped"] == [] and result["drift"] == [] and result["unchanged"] == 0
     assert result["written"] is True
     lines = manifest_path(root).read_text().splitlines()
-    assert lines == [f"{digest('the paper\n')}  raw/paper.md",
-                     f"{digest('bytes\n')}  raw/sub/data.bin"]  # sorted, sha256sum format
+    assert lines == [digest('the paper\n') + "  raw/paper.md",
+                     digest('bytes\n') + "  raw/sub/data.bin"]  # sorted, sha256sum format
     assert ".gitkeep" not in manifest_path(root).read_text()  # placeholder, not a source
 
 
@@ -56,7 +56,7 @@ def test_update_adds_new_files(tmp_path):
     assert result["added"] == ["raw/new.md"]
     assert result["unchanged"] == 2
     assert result["written"] is True
-    assert f"{digest('new\n')}  raw/new.md" in manifest_path(root).read_text().splitlines()
+    assert digest('new\n') + "  raw/new.md" in manifest_path(root).read_text().splitlines()
 
 
 def test_update_drops_missing_files(tmp_path):
@@ -87,7 +87,7 @@ def test_drift_force_restamps(tmp_path):
     update_checksums(root)
     write(root / "raw/paper.md", "tampered\n")
     assert main(["checksums", str(root), "--force"]) == 0
-    assert f"{digest('tampered\n')}  raw/paper.md" in manifest_path(root).read_text().splitlines()
+    assert digest('tampered\n') + "  raw/paper.md" in manifest_path(root).read_text().splitlines()
     result = update_checksums(root)  # the re-stamp is now the truth
     assert result["drift"] == [] and result["written"] is False
 
