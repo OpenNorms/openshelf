@@ -276,6 +276,50 @@ cache is just the default.
 
 Schema: [`schemas/project.schema.json`](schemas/project.schema.json).
 
+### 6.1 Relation overlays
+
+A project that connects more than one KB composes them. A composing project
+MAY assert relations between pages — across connected KBs, or within one —
+**without modifying any KB**, using a relation overlay: a data file that lives
+in the composing project (conventionally `.openshelf/relations.yaml`), never
+in a KB.
+
+```yaml
+relations:
+  - from: kb://awesome-kb-automotive-security/can-fd
+    to: kb://awesome-kb-embedded-security/can-tools
+    type: related
+    note: "Protocol view in one KB, tooling view in the other."
+```
+
+- Endpoints MUST be `kb://` URIs (§4.4), so an overlay never depends on a
+  KB's internal file layout.
+- Defined types: `related` and `same-as` are symmetric; `broader` and
+  `narrower` are inverses; `supersedes` is directional. Projects MAY use
+  further types; consumers MUST ignore types they do not recognise, and MUST
+  ignore fields they do not recognise.
+- Consumers that compose (build-time renderers, context builders) MUST
+  validate every endpoint against the revisions pinned in
+  `.openshelf/kbs.lock`. An endpoint that does not resolve at the pinned
+  commit is an error in the composing project — never a lint failure in the
+  referenced KB.
+- Overlay relations MUST remain distinguishable from relations a page asserts
+  in its own frontmatter (`related:`): their provenance is the composition,
+  not the KB. Consumers SHOULD present them labelled as such.
+- A symmetric relation SHOULD be presented from both endpoints, even though
+  the overlay records it once.
+- `same-as` records that two pages describe the same entity, for the composed
+  view only. It does not merge the pages: each still renders on its own, in
+  its own KB, and a KB's standalone rendering is unaffected by any overlay.
+- A KB MAY later adopt an overlay relation into its own pages through its
+  normal maintenance process; the overlay entry SHOULD then be removed, so a
+  relation lives in exactly one layer at a time.
+- Tooling MAY propose candidate relations — for example pages in different
+  KBs sharing a canonical URL, a DOI, or a title — but a candidate becomes a
+  relation only when it is recorded in the overlay.
+
+Schema: [`schemas/relations.schema.json`](schemas/relations.schema.json).
+
 ---
 
 # Part II — Conventions
