@@ -12,6 +12,11 @@ license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = ["pyyaml>=6", "jsonschema>=4.18"]
 
+[project.urls]
+Homepage = "https://opennorms.github.io/openshelf/"
+Repository = "https://github.com/OpenNorms/openshelf"
+Specification = "https://opennorms.github.io/openshelf/spec/"
+
 [project.optional-dependencies]
 mcp = ["mcp>=2.3"]
 test = ["pytest>=8", "mcp>=2.3"]
