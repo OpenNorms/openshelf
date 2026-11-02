@@ -26,7 +26,8 @@
             "properties": {
               "url": { "type": "string" },
               "path": { "type": "string" },
-              "retrieved": { "type": "string", "format": "date" }
+              "retrieved": { "type": "string", "format": "date" },
+              "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }
             },
             "anyOf": [{ "required": ["url"] }, { "required": ["path"] }]
           }

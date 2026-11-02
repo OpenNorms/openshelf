@@ -8,7 +8,9 @@ from pathlib import Path
 
 from . import __version__, project
 from .init import init
+from .kb import KBError
 from .lint import lint
+from .uid import mint_missing
 
 
 def _lint(args: argparse.Namespace) -> int:
@@ -29,6 +31,17 @@ def _init(args: argparse.Namespace) -> int:
     init(root, id=args.id or root.resolve().name, title=args.title or args.id or root.resolve().name,
          description=args.description, license=args.license, visibility=args.visibility)
     print(f"Created KB in {root}")
+    return 0
+
+
+def _uid(args: argparse.Namespace) -> int:
+    try:
+        result = mint_missing(args.path)
+    except KBError as e:
+        print(f"openshelf: {e}", file=sys.stderr)
+        return 1
+    print(f"KB uid: {result['kb']}; pages: {result['pages_minted']} minted, "
+          f"{result['pages_existing']} already had one, {result['pages_skipped']} skipped (no usable frontmatter)")
     return 0
 
 
@@ -79,6 +92,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("paths", nargs="*", default=["."])
     p.add_argument("--strict", action="store_true", help="fail on warnings too")
     p.set_defaults(func=_lint)
+
+    p = sub.add_parser("uid", help="mint any missing KB and page uids (the §4.1 adoption path)")
+    p.add_argument("path", nargs="?", default=".")
+    p.set_defaults(func=_uid)
 
     p = sub.add_parser("add", help="connect a KB to this project")
     p.add_argument("source", help="github:owner/repo, a git URL, or a local path relative to the project root")

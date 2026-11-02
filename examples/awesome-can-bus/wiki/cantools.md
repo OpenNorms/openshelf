@@ -1,4 +1,5 @@
 ---
+uid: 01a19d2e-d813-7999-8572-a8850f14f67c
 title: cantools
 summary: Python package to parse CAN databases (such as DBC files) and encode or decode messages and signals.
 type: entity

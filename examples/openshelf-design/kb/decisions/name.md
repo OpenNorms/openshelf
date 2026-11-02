@@ -1,4 +1,5 @@
 ---
+uid: 01a19d2e-d96b-7fd0-9ebe-8946c2c497c3
 title: The name OpenShelf
 type: decision
 summary: Renamed from OpenKB to OpenShelf to avoid a popular project of the same name, using a shelf metaphor for connected KBs.

@@ -1,4 +1,5 @@
 ---
+uid: 01a19d2e-d96c-79a7-a8f4-1d13f51a34e8
 title: Progressive context
 type: concept
 summary: Load knowledge in tiers, from a one-line description down to raw sources, only as deep as a task needs.

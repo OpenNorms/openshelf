@@ -16,6 +16,7 @@
         "pages": { "$ref": "#/$defs/relpath", "default": "wiki" },
         "index": { "$ref": "#/$defs/relpath", "default": "index.md" },
         "sources": { "$ref": "#/$defs/relpath", "default": "raw" },
+        "checksums": { "$ref": "#/$defs/relpath" },
         "schema": { "$ref": "#/$defs/relpath", "default": "AGENTS.md" },
         "log": { "$ref": "#/$defs/relpath", "default": "log.md" }
       },
@@ -23,8 +24,25 @@
     },
     "types": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "fields": {
+                "type": "object",
+                "properties": {
+                  "required": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        ]
+      }
     },
+    "unique-names": { "type": "boolean" },
     "profile": { "type": "string", "default": "wiki" },
     "version": { "type": "string" },
     "license": { "type": "string" },

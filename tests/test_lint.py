@@ -207,3 +207,56 @@ def test_kb_shorthand_wikilink(kb):
     with open(kb / "kb.yaml", "a") as f:
         f.write("depends: [other]\n")
     assert lint(kb) == []
+
+
+def test_source_sha256_and_checksums_manifest(kb):
+    import hashlib
+
+    write(kb / "raw/paper.pdf", "fake pdf\n")
+    digest = hashlib.sha256(b"fake pdf\n").hexdigest()
+    write(kb / "wiki/a.md", page("A", sources=f"[{{path: raw/paper.pdf, sha256: {digest}}}]"))
+    assert lint(kb) == []
+    write(kb / "wiki/a.md", page("A", sources=f"[{{path: raw/paper.pdf, sha256: {'f' * 64}}}]"))
+    assert any("sha256 mismatch for 'raw/paper.pdf'" in e for e in errors(kb))
+    write(kb / "wiki/a.md", page("A"))
+    write(kb / "raw/MANIFEST.sha256", f"{digest}  raw/paper.pdf\n")
+    with open(kb / "kb.yaml", "a") as f:
+        f.write("layout: {checksums: raw/MANIFEST.sha256}\n")
+    assert lint(kb) == []
+    write(kb / "raw/paper.pdf", "tampered\n")
+    assert "raw/MANIFEST.sha256: sha256 mismatch: raw/paper.pdf" in errors(kb)
+
+
+def test_declared_subindex(kb):
+    write(kb / "wiki/c.md", page("C"))
+    write(kb / "wiki/more.md", "---\ntitle: More\ntype: index\n---\n# More\n\n- [[c]] — A page.\n")
+    write(kb / "index.md", (kb / "index.md").read_text() + "- [[more]] — More pages.\n")
+    assert lint(kb) == []
+
+
+def test_fragment_links(kb):
+    write(kb / "wiki/b.md", page("B", body="# B\n\n## Deep Dive\n\nText.\n"))
+    write(kb / "wiki/a.md", page("A", body="See [[b#deep-dive]] and [[b#nope]]."))
+    assert errors(kb) == []
+    assert warnings(kb) == ["wiki/a.md: link [[b#nope]] points at section '#nope', which page 'b' does not have"]
+
+
+def test_unique_names(kb):
+    write(kb / "wiki/x/dup.md", page("D1"))
+    write(kb / "wiki/y/dup.md", page("D2"))
+    write(kb / "index.md", (kb / "index.md").read_text() + "- [[x/dup]]\n- [[y/dup]]\n")
+    assert lint(kb) == []
+    with open(kb / "kb.yaml", "a") as f:
+        f.write("unique-names: true\n")
+    assert sum("duplicate page file name 'dup'" in e for e in errors(kb)) == 2
+
+
+def test_type_required_fields(kb):
+    with open(kb / "kb.yaml", "a") as f:
+        f.write("types:\n  meeting:\n    description: Digested minutes.\n    fields: {required: [date, attendees]}\n")
+    write(kb / "wiki/b.md", page("B").replace("type: concept", "type: meeting"))
+    errs = errors(kb)
+    assert "wiki/b.md: type 'meeting' requires field 'date'" in errs
+    assert "wiki/b.md: type 'meeting' requires field 'attendees'" in errs
+    write(kb / "wiki/b.md", page("B", date="2026-10-31", attendees="[phil]").replace("type: concept", "type: meeting"))
+    assert lint(kb) == []

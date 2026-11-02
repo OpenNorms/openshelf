@@ -15,7 +15,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from . import project
-from .kb import KB, KBError, Link
+from .kb import KB, KBError, Link, section_text
 
 MAX_SOURCE_CHARS = 100_000
 SEARCH_LIMIT = 20
@@ -64,12 +64,22 @@ def _link_info(kb: KB, link: Link) -> dict[str, Any] | None:
     """Describe a link so the agent can follow it, or None if it isn't followable."""
     if link.kind == "page":
         final = kb.follow(link.target)
-        return {"link": link.raw, "kb": kb.id, "page": final} if final else None
+        if not final:
+            return None
+        info: dict[str, Any] = {"link": link.raw, "kb": kb.id, "page": final}
+        if link.fragment:
+            info["section"] = link.fragment
+        return info
     if link.kind == "subindex":
         return {"link": link.raw, "kb": kb.id, "subindex": Path(link.target).relative_to(kb.root).as_posix()}
     if link.kind == "kb":
         other, _, page = link.target.partition("/")
-        return {"link": link.raw, "kb": other, "page": page} if other and page else None
+        if not (other and page):
+            return None
+        info = {"link": link.raw, "kb": other, "page": page}
+        if link.fragment:
+            info["section"] = link.fragment
+        return info
     return None
 
 
@@ -125,7 +135,8 @@ def build_server(root: str | Path) -> MCPServer:
     def read_page(kb: str, page: str) -> dict[str, Any]:
         """Read one page (L2) by its id (its path without .md, e.g. "topics/llm-wiki").
 
-        A bare file name works if it is unique. Redirects are followed. Returns the page's
+        Append "#<heading-slug>" to read only that section of the page. A bare file name
+        works if it is unique. Redirects are followed. Returns the page's
         frontmatter, its Markdown body and the links it contains."""
         k = shelf.get(kb)
         link = k.resolve(k.path("index"), "wiki", page)
@@ -145,6 +156,12 @@ def build_server(root: str | Path) -> MCPServer:
         }
         if link.target != final:
             result["redirected_from"] = link.target
+        if link.fragment:
+            section = section_text(p.body, link.fragment)
+            if section is None:
+                raise ToolError(f"page '{final}' in KB '{kb}' has no section '#{link.fragment}'")
+            result["section"] = link.fragment
+            result["content"] = section
         return result
 
     @server.tool()

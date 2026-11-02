@@ -1,5 +1,6 @@
-openshelf: "0.1"
+openshelf: "1.4"
 id: awesome-can-bus
+uid: 01a19d2e-d805-7484-855c-68e5e6d303df
 title: Awesome CAN bus
 description: >
   Curated tools and libraries for working with CAN bus: interfacing with
