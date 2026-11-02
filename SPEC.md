@@ -1,4 +1,4 @@
-# OpenShelf Specification — v1.4
+# OpenShelf Specification — v1.5
 
 OpenShelf standardizes the **LLM Wiki** pattern described by Andrej Karpathy
 ([gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)).
@@ -52,7 +52,7 @@ A KB is a directory with a `kb.yaml` file at its root. This file is the only
 fixed path in the spec.
 
 ```yaml
-openshelf: "1.4"                 # REQUIRED  spec version
+openshelf: "1.5"                 # REQUIRED  spec version
 id: awesome-can-bus           # REQUIRED  [a-z0-9-], unique per publisher
 uid: 0193f8c2-7a1b-7c3d-8e4f-5a6b7c8d9e0f  # SHOULD  UUID, minted once, never changes
 title: Awesome CAN bus        # REQUIRED
@@ -105,10 +105,10 @@ level up. The `id` names the KB for humans and registries; the `uid`
 identifies it across renames, repository moves, and `id` changes. A mirror of
 a KB keeps its `uid` — it is the same KB, replicated; a fork that diverges is
 a new KB and MUST be minted a fresh `uid`. A project that connects KBs (§6)
-MAY record each KB's `uid` in `.openshelf/kbs.lock` alongside the pinned
-revision, so a consumer can verify it imported the KB it meant to; tooling
-SHOULD flag two connected KBs carrying the same `uid`. Tools SHOULD mint a
-KB's `uid`, as they do page `uid`s (§4.1).
+records it in `.openshelf/kbs.lock` alongside the pinned revision and
+verifies it on sync (§6): the `uid`, not the `id`, is what proves a
+composition imported the KB it meant to. Tools SHOULD mint a KB's `uid`,
+as they do page `uid`s (§4.1).
 
 All `layout` paths are relative to the KB root and MUST NOT point outside it.
 Consumers MUST use the declared paths and the defaults above for any that
@@ -389,7 +389,7 @@ The index MAY be written by hand, by the LLM, or generated from frontmatter.
 A project lists its KBs in `.openshelf/kbs.yaml`:
 
 ```yaml
-openshelf: "1.4"
+openshelf: "1.5"
 kbs:
   - id: awesome-can-bus
     source: github:hexsecs/awesome-can-bus   # github:owner/repo, git URL, or local path
@@ -423,6 +423,29 @@ A project MUST treat connected KBs as read-only. Knowledge gained while
 working on the project MUST be contributed back to a KB through that KB's own
 maintenance process, in its own repository.
 
+Identity in a composition is the `uid` (§2), not the `id`: the `id` is the
+address `kb://` links use, and the `uid` is what proves the KB at that
+address is the KB that was connected.
+
+- When a project syncs, it MUST record the `uid` of every connected KB
+  that declares one in `kbs.lock`, alongside the pin.
+- On a later sync, if the KB fetched under a connected `id` presents a
+  different `uid` from the one the lock records — or none — the sync MUST
+  fail: a different KB is answering to a familiar name, and composing it
+  silently is never right. Replacing a KB deliberately is done by
+  removing the connection and adding the new KB, which records its `uid`
+  fresh.
+- Two KBs carrying the same `uid` MUST NOT be composed together — that
+  is the same KB connected twice, or a fork that failed to mint a fresh
+  `uid` (§2) — and sync MUST fail on it.
+- If the KB fetched under a connected `id` declares a different `id` but
+  the same `uid` as the lock records, it is the same KB renamed. Sync
+  MUST fail with that diagnosis until the project updates the connection
+  `id`: the `uid` proves it is a rename rather than a substitution, and
+  references use the `id`, so the rename stays a deliberate act by the
+  project.
+- A KB that declares no `uid` composes as before, unverified.
+
 Projects MAY connect a KB as a git submodule or plain directory instead; the
 cache is just the default.
 
@@ -446,6 +469,11 @@ relations:
 
 - Endpoints MUST be `kb://` URIs (§4.4), so an overlay never depends on a
   KB's internal file layout.
+- An endpoint MAY address a KB by `uid` instead of `id` —
+  `kb://uid:<uid>/<page-id>` — for an assertion that must survive a
+  rename of that KB; consumers MUST resolve the `uid` form against the
+  `uid`s recorded in `kbs.lock`. The `uid` form is for overlays: page
+  bodies and `depends` keep using `id`s.
 - Defined types: `related` and `same-as` are symmetric; `broader` and
   `narrower` are inverses; `supersedes` is directional. Projects MAY use
   further types; consumers MUST ignore types they do not recognise, and MUST

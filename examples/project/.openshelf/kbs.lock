@@ -1,6 +1,8 @@
-openshelf: '1.4'
+openshelf: '1.5'
 kbs:
   awesome-can-bus:
     source: ../awesome-can-bus
+    uid: 01a19d2e-d805-7484-855c-68e5e6d303df
   openshelf-design:
     source: ../openshelf-design
+    uid: 01a19d2e-d960-7ff3-8599-ee886b8471d1

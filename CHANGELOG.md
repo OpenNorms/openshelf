@@ -11,6 +11,30 @@ ones.
 
 ## [Unreleased]
 
+## [1.5] - 2026-11-02
+
+From #46: composition addressed KBs entirely by their self-asserted `id`
+and never used the `uid`, leaving substitution (a different KB answering
+to a familiar id) and rename (the same KB under a new id) both invisible
+to tooling. Backward compatible: KBs without a `uid` compose as before.
+
+### Added
+
+- §6: identity verification in compositions. Sync records each connected
+  KB's `uid` in kbs.lock; a later sync fails if the KB fetched under a
+  connected id presents a different (or no) `uid` — a substitution — and
+  fails if two connected KBs carry the same `uid`. A changed `id` with
+  an unchanged `uid` is diagnosed as a rename, failing sync until the
+  project updates the connection id.
+- §6.1: overlay endpoints may address a KB by `uid`
+  (`kb://uid:<uid>/<page-id>`), resolved against the lock, for assertions
+  that must survive a rename.
+
+### Changed
+
+- §2: a composing project records and verifies KB `uid`s as a matter of
+  course (was: MAY record, SHOULD flag duplicates).
+
 ## [1.4] - 2026-11-02
 
 All items are from #41, a field report on adopting OpenShelf in an existing
