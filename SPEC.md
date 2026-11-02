@@ -1,4 +1,4 @@
-# OpenShelf Specification — v1.6
+# OpenShelf Specification — v1.7
 
 OpenShelf standardizes the **LLM Wiki** pattern described by Andrej Karpathy
 ([gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)).
@@ -52,7 +52,7 @@ A KB is a directory with a `kb.yaml` file at its root. This file is the only
 fixed path in the spec.
 
 ```yaml
-openshelf: "1.6"                 # REQUIRED  spec version
+openshelf: "1.7"                 # REQUIRED  spec version
 id: awesome-can-bus           # REQUIRED  [a-z0-9-], unique per publisher
 uid: 0193f8c2-7a1b-7c3d-8e4f-5a6b7c8d9e0f  # SHOULD  UUID, minted once, never changes
 title: Awesome CAN bus        # REQUIRED
@@ -117,7 +117,9 @@ are missing. `layout.pages` MAY be `.` for a KB whose pages sit at the root.
 A KB MAY declare `layout.checksums`: a file in `sha256sum` format listing
 content hashes of files in the KB — typically its raw sources, which §7
 holds immutable. Lint MUST verify a declared manifest: a listed file that
-is missing, or whose hash does not match, is an error.
+is missing, or whose hash does not match, is an error. §7.1 gathers the
+raw-source model this manifest serves — immutability, capture records,
+and citation form.
 
 Fields not defined here are allowed and MUST be ignored by consumers that
 don't understand them. Tool-specific settings SHOULD go under an `x-<tool>`
@@ -221,7 +223,9 @@ a citation stays valid when the page moves. Lint SHOULD check that a cited
 path exists. A path entry MAY also carry a `sha256`, the content hash of
 the cited file — for a local source the useful integrity fact, where
 `retrieved` is the one for a URL — and lint MUST report a mismatch as an
-error.
+error. The raw sources themselves — their immutability, the optional
+capture-record profile, and how to cite one from prose — are gathered
+in §7.1.
 
 Validators MUST grade schema findings by the field's normative level: a
 violation in a REQUIRED field (`title`, `summary`, `redirect`) is an error,
@@ -389,7 +393,7 @@ The index MAY be written by hand, by the LLM, or generated from frontmatter.
 A project lists its KBs in `.openshelf/kbs.yaml`:
 
 ```yaml
-openshelf: "1.6"
+openshelf: "1.7"
 kbs:
   - id: awesome-can-bus
     source: github:hexsecs/awesome-can-bus   # github:owner/repo, git URL, or local path
@@ -530,6 +534,65 @@ my-kb/
 
 Inside `wiki/`, a flat directory is simplest. Larger KBs often use
 `wiki/entities/`, `wiki/concepts/` and so on; ids then include the folder.
+
+### 7.1 Raw sources
+
+Raw sources are a KB's evidence layer: the material pages are synthesized
+from, held under `layout.sources` — outside the page graph (§4) — and
+loaded only at L3, to verify or extend a page (§3). They are immutable:
+the maintainer reads them but never modifies them, so a page's claims can
+always be re-checked against the source as captured. A source that can't
+be redistributed MAY live outside the KB and be cited by URL instead.
+
+Two mechanisms keep that model honest, and their rules live with the
+fields that carry them: a `layout.checksums` manifest (§2) makes the
+immutability of the held files verifiable, and a page's `sources`
+entries (§4.2) record which sources back its claims — a `sha256` for a
+cited file, `retrieved` for a URL. What belongs to the sources
+themselves is gathered here: a capture record, and the citation form.
+
+**Capture records.** A Markdown capture MAY carry a frontmatter record
+describing the capture itself (files under `layout.sources` are not
+pages, so §4.2's page frontmatter does not apply to them):
+
+```yaml
+source_url: https://example.org/article          # where the capture came from
+canonical_url: https://doi.org/10.0000/example   # the source's canonical address, if different
+source_type: article                             # article | paper | docs | data | …
+published: 2026-10-30                            # when the source was published, if known
+status: captured                                 # see below
+```
+
+The record is a recommended profile, not a requirement: no schema
+requires it, and a KB's captures stay conforming without it. Its
+`status` says how much of the source the KB actually holds:
+
+| Status          | Meaning                                       |
+|-----------------|-----------------------------------------------|
+| `captured`      | The full capture is held.                     |
+| `partial`       | A capture is held, but it is incomplete.      |
+| `metadata-only` | A record of the source, with no capture.      |
+| `blocked`       | The primary source could not be captured.     |
+| `superseded`    | This capture has been replaced by a newer one. |
+
+A `metadata-only` or `blocked` record MAY be a frontmatter-only file
+with no body — the record is the content. Two fields are deliberately
+absent from the profile: `sha256`, because integrity belongs to the
+checksums manifest (§2) — a file is a poor witness to its own hash —
+and `retrieved`, because retrieval is a fact about a citation and
+belongs in the citing page's `sources` entries (§4.2).
+
+**Citing a raw source.** From a page's prose, cite a raw file with a
+Markdown file link, relative to the page:
+
+```markdown
+Measurements are from [the capture](../raw/paper.md).
+```
+
+Wikilinks name pages (§4.4); files under `layout.sources` are not
+pages, so no wikilink can name one. The structured record of which
+sources back a page's claims belongs in its `sources` frontmatter
+(§4.2); the file link is for citing a capture inline, in prose.
 
 ## 8. Maintenance
 

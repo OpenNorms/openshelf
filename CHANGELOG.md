@@ -41,6 +41,34 @@ ones.
   URL citation with no `retrieved` date. All three are warnings, never
   errors.
 
+## [1.7] - 2026-11-02
+
+From #55: raw-source provenance and integrity were mostly in place —
+structured `sources` entries (§4.2), per-file `sha256`, the
+`layout.checksums` manifest (§2) — but the model was scattered across
+§2, §4.2 and §7, nothing could say how complete a capture is, and the
+way to cite a raw file from prose was undocumented (a wikilink to one
+is simply an unresolved link: raw files are not pages). Backward
+compatible: the capture profile is advisory, and no existing rule
+changes meaning.
+
+### Added
+
+- §7.1: the raw-source model gathered into one section — the L3 role,
+  immutability, the checksums manifest, capture records and citation
+  form. §2 and §4.2 keep their field-level rules and point to it.
+- §7.1: a recommended capture-record profile for Markdown raw captures
+  (`source_url`, `canonical_url`, `source_type`, `published`,
+  `status`), with a status vocabulary — `captured`, `partial`,
+  `metadata-only`, `blocked`, `superseded`. Advisory only, not
+  schema-required; a `metadata-only` or `blocked` record may be a
+  frontmatter-only file. `sha256` and `retrieved` are deliberately not
+  part of the profile: integrity lives in the §2 manifest, and
+  per-citation provenance in §4.2's `sources` entries.
+- §7.1: citation guidance — a Markdown file link relative to the page
+  (e.g. `[the capture](../raw/paper.md)`) is the canonical form for
+  citing a raw file from prose; wikilinks name pages.
+
 ## [1.6] - 2026-11-02
 
 ### Changed

@@ -14,7 +14,7 @@ The gist leaves layout, page formats and tooling open, and OpenShelf keeps it th
 
 ## Contents
 
-- [`SPEC.md`](SPEC.md): the v1.6 spec — also published, with the schemas, at [opennorms.github.io/openshelf](https://opennorms.github.io/openshelf/)
+- [`SPEC.md`](SPEC.md): the v1.7 spec — also published, with the schemas, at [opennorms.github.io/openshelf](https://opennorms.github.io/openshelf/)
 - [`CHANGELOG.md`](CHANGELOG.md): the spec's release history (every spec change bumps the version, §10)
 - [`schemas/`](schemas/): JSON Schemas for `kb.yaml`, page frontmatter and `.openshelf/kbs.yaml`
 - [`src/openshelf/`](src/openshelf/): the `openshelf` command-line tool
@@ -93,7 +93,7 @@ instead. This repo's own CI lints its example KBs through the action.
 
 ## Status
 
-Stable — spec v1.6. Changes to the spec are released as new spec versions and
+Stable — spec v1.7. Changes to the spec are released as new spec versions and
 recorded in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Releases and versions
