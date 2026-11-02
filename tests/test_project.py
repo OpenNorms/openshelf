@@ -127,3 +127,61 @@ def test_init_visibility_private_skips_license_default(tmp_path):
     manifest = yaml.safe_load((tmp_path / "kb2/kb.yaml").read_text())
     assert manifest["license"] == "CC-BY-4.0"
     assert "visibility" not in manifest
+
+
+def _set_manifest_field(path: Path, field: str, value: str) -> None:
+    import re
+
+    text = path.read_text()
+    new = re.sub(rf"^{field}: .*$", f"{field}: {value}", text, count=1, flags=re.M)
+    assert new != text
+    path.write_text(new)
+
+
+def test_sync_records_and_verifies_uid(tmp_path):
+    from openshelf.init import init
+    from openshelf.kb import mint_uid
+
+    kb = init(tmp_path / "kb", id="notes", title="Notes", description="Test notes.")
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    project.add(proj, str(kb))
+    project.sync(proj)
+    lock = yaml.safe_load((proj / ".openshelf/kbs.lock").read_text())
+    manifest = yaml.safe_load((kb / "kb.yaml").read_text())
+    assert lock["kbs"]["notes"]["uid"] == manifest["uid"]
+    # The same KB with new content still syncs (identity unchanged).
+    (kb / "log.md").write_text("# Log\n\nMore.\n")
+    project.sync(proj)
+    # A different KB answering to the same id — id kept, uid swapped — fails.
+    _set_manifest_field(kb / "kb.yaml", "uid", mint_uid())
+    with pytest.raises(project.ProjectError, match="uid does not match"):
+        project.sync(proj)
+
+
+def test_sync_rejects_duplicate_uid(tmp_path):
+    from openshelf.init import init
+
+    a = init(tmp_path / "a", id="a", title="A", description="KB A.")
+    b = init(tmp_path / "b", id="b", title="B", description="KB B.")
+    auid = yaml.safe_load((a / "kb.yaml").read_text())["uid"]
+    _set_manifest_field(b / "kb.yaml", "uid", auid)
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    project.add(proj, str(a))
+    project.add(proj, str(b))
+    with pytest.raises(project.ProjectError, match="same uid"):
+        project.sync(proj)
+
+
+def test_sync_diagnoses_rename_by_uid(tmp_path):
+    from openshelf.init import init
+
+    kb = init(tmp_path / "kb", id="notes", title="Notes", description="Test notes.")
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    project.add(proj, str(kb))
+    project.sync(proj)
+    _set_manifest_field(kb / "kb.yaml", "id", "renamed-notes")
+    with pytest.raises(project.ProjectError, match="renamed itself"):
+        project.sync(proj)

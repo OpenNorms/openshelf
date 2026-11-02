@@ -175,11 +175,34 @@ def sync(root: Path, *, offline: bool = False, locked: bool = False) -> list[KB]
             kb = KB(kb_root(root, entry))
         except KBError as e:
             raise ProjectError(f"{entry['id']}: {e}") from e
+        locked_uid = locked_kbs.get(entry["id"], {}).get("uid")
         if kb.id != entry["id"]:
+            if locked_uid and kb.uid == locked_uid:
+                # Same uid, new name: a rename, not a substitution (§6).
+                raise ProjectError(
+                    f"{entry['id']}: this KB has renamed itself to '{kb.id}' (same uid) — "
+                    f"update the connection id in {KBS} to match; kb:// references use the id")
             raise ProjectError(f"{entry['id']}: the KB's own id is '{kb.id}'")
+        if locked_uid and kb.uid != locked_uid:
+            # The id check passed but the identity did not: a different KB
+            # is answering to a familiar name (§6). Never compose it silently.
+            raise ProjectError(
+                f"{entry['id']}: this KB's uid does not match the uid recorded in {LOCK} — "
+                "a different KB is answering to this id; if the replacement is deliberate, "
+                "remove its entry from kbs.yaml and re-add it")
         kbs.append(kb)
         new_lock[entry["id"]] = {"source": entry["source"], **({"commit": commit} if commit else {}),
-                                 **({"url": kb.url} if kb.url else {})}
+                                 **({"url": kb.url} if kb.url else {}),
+                                 **({"uid": kb.uid} if kb.uid else {})}
+
+    by_uid: dict[str, str] = {}
+    for entry, kb in zip(data["kbs"], kbs):
+        if kb.uid:
+            if kb.uid in by_uid:
+                raise ProjectError(
+                    f"KBs '{by_uid[kb.uid]}' and '{entry['id']}' carry the same uid — the same KB "
+                    "connected twice, or a fork that did not mint a fresh uid")
+            by_uid[kb.uid] = entry["id"]
 
     (root / DIR).mkdir(parents=True, exist_ok=True)
     lock_path.write_text(yaml.safe_dump({"openshelf": SPEC_VERSION, "kbs": new_lock}, sort_keys=False), encoding="utf-8")

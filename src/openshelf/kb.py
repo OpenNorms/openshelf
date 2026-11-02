@@ -182,6 +182,11 @@ class KB:
         u = self.manifest.get("url")
         return u if isinstance(u, str) and u else None
 
+    @property
+    def uid(self) -> str | None:
+        u = self.manifest.get("uid")
+        return u if isinstance(u, str) and u else None
+
     def path(self, key: str) -> Path:
         return (self.root / self.layout[key]).resolve()
 
