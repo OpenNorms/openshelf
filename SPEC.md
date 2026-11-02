@@ -45,6 +45,7 @@ fixed path in the spec.
 ```yaml
 openshelf: "0.1"                 # REQUIRED  spec version
 id: awesome-can-bus           # REQUIRED  [a-z0-9-], unique per publisher
+uid: 0193f8c2-7a1b-7c3d-8e4f-5a6b7c8d9e0f  # SHOULD  UUID, minted once, never changes
 title: Awesome CAN bus        # REQUIRED
 description: >                # REQUIRED  L0 text, ≤ 300 chars
   Curated tools and libraries for working with CAN bus...
@@ -67,6 +68,16 @@ depends: []                   # OPTIONAL  ids of KBs this one links into
 
 If `license` is absent, consumers MUST NOT assume one. `openshelf init` uses
 CC-BY-4.0 unless told otherwise.
+
+A KB SHOULD also carry a `uid`: a UUID minted once, when the KB is created,
+and never changed afterwards — the same rule as a page's `uid` (§4.1), one
+level up. The `id` names the KB for humans and registries; the `uid`
+identifies it across renames, repository moves, and `id` changes. A mirror of
+a KB keeps its `uid` — it is the same KB, replicated; a fork that diverges is
+a new KB and MUST be minted a fresh `uid`. A project that connects KBs (§6)
+MAY record each KB's `uid` in `.openshelf/kbs.lock` alongside the pinned
+revision, so a consumer can verify it imported the KB it meant to; tooling
+SHOULD flag two connected KBs carrying the same `uid`.
 
 All `layout` paths are relative to the KB root and MUST NOT point outside it.
 Consumers MUST use the declared paths and the defaults above for any that
