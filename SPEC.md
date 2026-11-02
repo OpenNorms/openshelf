@@ -1,4 +1,4 @@
-# OpenShelf Specification — v0.1 (draft)
+# OpenShelf Specification — v1.0
 
 OpenShelf standardizes the **LLM Wiki** pattern described by Andrej Karpathy
 ([gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)).
@@ -17,9 +17,13 @@ tool or project needs in order to **connect** to a KB:
   types, operations and profiles. Follow them, change them or ignore them; a
   KB stays compatible as long as it meets the contract.
 
-The key words MUST, SHOULD and MAY are used as in RFC 2119. They apply only
-in the contract sections; the convention sections are non-normative unless a
-KB opts into a profile (§9).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174]
+when, and only when, they appear in all capitals, as shown here. They are
+normative only in the contract sections (Part I); the convention sections
+(Part II) are non-normative unless a KB opts into a profile (§9), in which
+case that profile's key words carry the same force as Part I for that KB.
 
 ---
 
@@ -43,7 +47,7 @@ A KB is a directory with a `kb.yaml` file at its root. This file is the only
 fixed path in the spec.
 
 ```yaml
-openshelf: "0.1"                 # REQUIRED  spec version
+openshelf: "1.0"                 # REQUIRED  spec version
 id: awesome-can-bus           # REQUIRED  [a-z0-9-], unique per publisher
 uid: 0193f8c2-7a1b-7c3d-8e4f-5a6b7c8d9e0f  # SHOULD  UUID, minted once, never changes
 title: Awesome CAN bus        # REQUIRED
@@ -110,7 +114,8 @@ A **page** is any `.md` file under `layout.pages`, except:
 - sub-indexes: files with no frontmatter that are linked from the index (or
   from another sub-index) and that themselves contain links;
 - files and directories whose name starts with `_` or `.`. Directories inside
-`layout.pages` are free-form: organize by type, topic, date or not at all.
+`layout.pages` are free-form: a KB MAY organize them by type, topic, date, or
+not at all.
 
 ### 4.1 Identity
 
@@ -133,7 +138,7 @@ pages because it sorts by creation time. A `uid` is not a content hash: it
 does not change when the page's content does.
 
 Cross-KB references (§4.4, §6.1) MAY cite a page by `uid` so they survive
-renames; consumers resolve a `uid` through an index of `uid` → current
+renames; consumers MUST resolve a `uid` through an index of `uid` → current
 location built at sync or composition time. If two pages in one composition
 carry the same `uid`, they are the same page appearing twice — a move in
 flight, or a copy that kept a `uid` it should not have — and composition
@@ -152,21 +157,21 @@ And SHOULD have:
 
 | Field     | Rule                                                              |
 |-----------|-------------------------------------------------------------------|
-| `uid`     | Persistent page identifier (UUID); minted once at creation, never changes, see §4.1 |
+| `uid`     | Persistent page identifier (UUID); minted once at creation; MUST NOT change, see §4.1 |
 | `type`    | A page type, see §4.3                                             |
-| `created` | Date the page first entered the KB (`YYYY-MM-DD`); set once, never changes |
+| `created` | Date the page first entered the KB (`YYYY-MM-DD`); set once; MUST NOT change |
 | `updated` | Date of last substantive change (`YYYY-MM-DD`)                    |
 | `depth`   | How much authored depth the page carries, see §4.5                |
 | `sources` | List of `{url or path, retrieved}` backing the page's claims      |
 
 Any other fields (`tags`, `aliases`, `related`, Dataview fields, profile
-fields) are allowed and ignored by consumers that don't understand them.
+fields) MAY be present; consumers MUST ignore fields they do not understand.
 
 Schema: [`schemas/page.schema.json`](schemas/page.schema.json).
 
 ### 4.3 Page types
 
-`type` is free text, so a KB can use whatever types suit its domain. The
+`type` is free text, so a KB MAY use whatever types suit its domain. The
 **core types** in §8.2 have shared meanings, and a KB SHOULD use them where
 they fit. A KB that uses other types SHOULD declare them in `kb.yaml`, so
 consumers and other maintainers know what they mean:
@@ -183,12 +188,13 @@ Inside a KB, pages MAY use either style; consumers MUST resolve both:
 
 - **Markdown links** with relative paths: `[cantools](cantools.md)`.
 - **Wikilinks**: `[[cantools]]`, `[[entities/cantools]]` or
-  `[[cantools|label]]`. A wikilink resolves to the page whose id matches; if
-  none does, to the only page with that file name; otherwise it is ambiguous
-  and lint SHOULD flag it.
+  `[[cantools|label]]`. Consumers MUST resolve a wikilink to the page whose
+  id matches; if none does, to the only page with that file name; otherwise
+  the wikilink is ambiguous and lint SHOULD flag it.
 
-Links **to another KB** use `kb://<kb-id>/<page-id>`. Consumers resolve them
-only when that KB is connected, and otherwise show the link text.
+Links **to another KB** MUST use `kb://<kb-id>/<page-id>`. Consumers MUST
+resolve them only when that KB is connected, and otherwise MUST show the
+link text.
 
 A moved page MAY leave a stub at its old path with `redirect: <new-id>` in its
 frontmatter and no body. Consumers MUST follow it.
@@ -213,7 +219,7 @@ The design choices behind the four:
   item, so every link target exists and is reachable from the index from
   day one. A stub is not a reading tier; its size is bounded by its
   template, and lint applies the `brief` ceiling as a sanity cap — a stub
-  that has grown authored content is misclassified and should be promoted,
+  that has grown authored content is misclassified and SHOULD be promoted,
   not left to swell.
 - **`brief` is sized to one retrieval chunk.** Retrieval practice puts a
   coherent, self-contained chunk at roughly 400–800 tokens, so a 750-token
@@ -229,7 +235,7 @@ The design choices behind the four:
   real researched pages kept hitting that ceiling and losing load-bearing
   detail to budget-trimming. Full pages are slightly heavy for bulk agent
   loading (distilled context is usually 1,000–2,000 tokens), so consumers
-  should load them one at a time, or by section — the ladder assumes
+  SHOULD load them one at a time, or by section — the ladder assumes
   section-level retrieval exists for L2.
 - **`deep` is an overview ceiling, not a monograph.** At ~4,500 words it
   is large enough to hold a landmark topic's apparatus — the primary
@@ -244,11 +250,12 @@ The design choices behind the four:
 - **Promotion is editorial, not volumetric.** A page moves stub → brief →
   full → deep when the topic earns it — centrality, citations from other
   pages, a maintainer's judgment that the substance is being lost — not
-  merely because text accumulated. Most pages should never be `deep`;
+  merely because text accumulated. Most pages SHOULD never be `deep`;
   if everything is deep, the ladder carries no signal.
-- **Absent `depth`, the `full` budget applies.** Depth is optional; a KB
+- **Absent `depth`, the `full` budget applies.** Depth is OPTIONAL; a KB
   that never uses it sees one change, the default L2 budget of 2,500
-  tokens. Any other `depth` value is a schema error.
+  tokens. If `depth` is absent, consumers MUST apply the `full` budget, and
+  consumers MUST treat any other `depth` value as a schema error.
 
 Dates in frontmatter are deliberately three distinct facts: `created`
 (when the page first entered the KB; set once, never changes), `updated`
@@ -277,7 +284,7 @@ The index MAY be written by hand, by the LLM, or generated from frontmatter.
 A project lists its KBs in `.openshelf/kbs.yaml`:
 
 ```yaml
-openshelf: "0.1"
+openshelf: "1.0"
 kbs:
   - id: awesome-can-bus
     source: github:hexsecs/awesome-can-bus   # github:owner/repo, git URL, or local path
@@ -291,17 +298,17 @@ project.
 
 A tool (CLI, MCP server or agent hook) then:
 
-1. Fetches each KB into `.openshelf/cache/<id>/` (gitignored), pinned in
+1. MUST fetch each KB into `.openshelf/cache/<id>/` (gitignored), pinned in
    `.openshelf/kbs.lock`.
-2. Writes `.openshelf/context.md`: one block per KB with its L0 text, the `use`
-   hint, and the resolved path of its index.
-3. The project's `AGENTS.md` / `CLAUDE.md` includes or links
+2. MUST write `.openshelf/context.md`: one block per KB with its L0 text, the
+   `use` hint, and the resolved path of its index.
+3. The project's `AGENTS.md` / `CLAUDE.md` MUST include or link
    `.openshelf/context.md`, so the agent always sees L0 for every KB and knows
    how to go deeper.
 
-Connected KBs are read-only from the project's side. Knowledge gained while
-working on the project goes back to a KB through that KB's own maintenance
-process, in its own repository.
+A project MUST treat connected KBs as read-only. Knowledge gained while
+working on the project MUST be contributed back to a KB through that KB's own
+maintenance process, in its own repository.
 
 Projects MAY connect a KB as a git submodule or plain directory instead; the
 cache is just the default.
@@ -332,17 +339,18 @@ relations:
   ignore fields they do not recognise.
 - Consumers that compose (build-time renderers, context builders) MUST
   validate every endpoint against the revisions pinned in
-  `.openshelf/kbs.lock`. An endpoint that does not resolve at the pinned
-  commit is an error in the composing project — never a lint failure in the
-  referenced KB.
+  `.openshelf/kbs.lock`. Consumers MUST treat an endpoint that does not
+  resolve at the pinned commit as an error in the composing project — never
+  as a lint failure in the referenced KB.
 - Overlay relations MUST remain distinguishable from relations a page asserts
   in its own frontmatter (`related:`): their provenance is the composition,
   not the KB. Consumers SHOULD present them labelled as such.
 - A symmetric relation SHOULD be presented from both endpoints, even though
   the overlay records it once.
 - `same-as` records that two pages describe the same entity, for the composed
-  view only. It does not merge the pages: each still renders on its own, in
-  its own KB, and a KB's standalone rendering is unaffected by any overlay.
+  view only. Consumers MUST NOT merge the pages: each MUST still render on
+  its own, in its own KB, and a KB's standalone rendering MUST be unaffected
+  by any overlay.
 - A KB MAY later adopt an overlay relation into its own pages through its
   normal maintenance process; the overlay entry SHOULD then be removed, so a
   relation lives in exactly one layer at a time.
@@ -421,10 +429,10 @@ Created python-can; updated socketcan and the index.
 
 ### 8.4 Content
 
-- State contradictions between sources on the page instead of silently
-  picking one.
-- Mark claims no source backs, e.g. `(unverified)`.
-- Split pages that outgrow the L2 budget.
+- Pages SHOULD state contradictions between sources on the page instead of
+  silently picking one.
+- Claims no source backs SHOULD be marked, e.g. `(unverified)`.
+- Pages that outgrow the L2 budget SHOULD be split.
 
 ### 8.5 Tooling
 
@@ -469,23 +477,30 @@ depth: full                    # how far the entry has been deepened (§4.5)
 ```
 
 `status` describes the listed thing's maintenance state. For a finished
-work — a publication such as a paper, talk, or book — the status is
+work — a publication such as a paper, talk, or book — the status MUST be
 `published`: the work is complete, it has no maintenance state to track,
 and `published` says so as a fact rather than leaving the field at the
-unverified default. `unknown` is reserved for living resources (projects,
-tools, services) whose current state has not been verified.
+unverified default. `unknown` MUST be reserved for living resources
+(projects, tools, services) whose current state has not been verified.
 
-The index groups entities by `category`, one line each with the summary, so
-it still reads as a classic awesome list. What this adds over a flat list:
+The index MUST group entities by `category`, one line each with the summary,
+so it still reads as a classic awesome list. What this adds over a flat list:
 
 - Each entry has an LLM-written summary, comparison links and sources.
 - Adding an entry is an `ingest`: a contributor submits a URL, the
   maintainer LLM writes or updates the page, links it to related entries and
   updates the index.
-- `lint` rechecks `url`, `status` and `last_checked`, and flags dead or
-  archived entries.
+- `lint` MUST recheck `url`, `status` and `last_checked`, and MUST flag dead
+  or archived entries.
 
 ## 10. Versioning
 
-This spec uses `openshelf: "<major>.<minor>"`. Before 1.0, minor versions may
-break compatibility.
+This spec uses `openshelf: "<major>.<minor>"`. Version 1.0 is the first
+stable version. From 1.0 on:
+
+- A **minor** version MUST NOT break compatibility: a KB that conforms to
+  1.x remains conforming under every later 1.y, and consumers MUST accept
+  KBs declaring any earlier minor version of the same major version.
+- A **major** version MAY break compatibility.
+- Before 1.0, minor versions could break compatibility; a KB declaring
+  `openshelf: "0.1"` predates the stable contract.
