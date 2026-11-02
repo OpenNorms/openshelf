@@ -14,7 +14,7 @@ The gist leaves layout, page formats and tooling open, and OpenShelf keeps it th
 
 ## Contents
 
-- [`SPEC.md`](SPEC.md): the v1.0 spec
+- [`SPEC.md`](SPEC.md): the v1.1 spec
 - [`schemas/`](schemas/): JSON Schemas for `kb.yaml`, page frontmatter and `.openshelf/kbs.yaml`
 - [`src/openshelf/`](src/openshelf/): the `openshelf` command-line tool
 - [`examples/awesome-can-bus/`](examples/awesome-can-bus/): a small awesome-profile KB using the default layout

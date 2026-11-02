@@ -1,4 +1,4 @@
-# OpenShelf Specification — v1.0
+# OpenShelf Specification — v1.1
 
 OpenShelf standardizes the **LLM Wiki** pattern described by Andrej Karpathy
 ([gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)).
@@ -47,7 +47,7 @@ A KB is a directory with a `kb.yaml` file at its root. This file is the only
 fixed path in the spec.
 
 ```yaml
-openshelf: "1.0"                 # REQUIRED  spec version
+openshelf: "1.1"                 # REQUIRED  spec version
 id: awesome-can-bus           # REQUIRED  [a-z0-9-], unique per publisher
 uid: 0193f8c2-7a1b-7c3d-8e4f-5a6b7c8d9e0f  # SHOULD  UUID, minted once, never changes
 title: Awesome CAN bus        # REQUIRED
@@ -284,7 +284,7 @@ The index MAY be written by hand, by the LLM, or generated from frontmatter.
 A project lists its KBs in `.openshelf/kbs.yaml`:
 
 ```yaml
-openshelf: "1.0"
+openshelf: "1.1"
 kbs:
   - id: awesome-can-bus
     source: github:hexsecs/awesome-can-bus   # github:owner/repo, git URL, or local path
@@ -504,3 +504,11 @@ stable version. From 1.0 on:
 - A **major** version MAY break compatibility.
 - Before 1.0, minor versions could break compatibility; a KB declaring
   `openshelf: "0.1"` predates the stable contract.
+
+Every change to this specification MUST be released as a new spec version —
+a minor version for a backward-compatible change, a major version for a
+breaking one — and MUST be recorded in
+[`CHANGELOG.md`](CHANGELOG.md), which follows the
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. A change
+with no version bump and no changelog entry is not a released change, and
+consumers are entitled to ignore it.
