@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from . import __version__, project
+from .checksums import update_checksums
 from .init import init
 from .kb import KBError
 from .lint import lint
@@ -42,6 +43,30 @@ def _uid(args: argparse.Namespace) -> int:
         return 1
     print(f"KB uid: {result['kb']}; pages: {result['pages_minted']} minted, "
           f"{result['pages_existing']} already had one, {result['pages_skipped']} skipped (no usable frontmatter)")
+    return 0
+
+
+def _checksums(args: argparse.Namespace) -> int:
+    try:
+        result = update_checksums(args.path, force=args.force)
+    except KBError as e:
+        print(f"openshelf: {e}", file=sys.stderr)
+        return 1
+    if not result["declared"]:
+        print(f"note: kb.yaml declares no layout.checksums; using {result['manifest']}")
+    for rel in result["added"]:
+        print(f"added: {rel}")
+    for rel in result["dropped"]:
+        print(f"dropped (file gone): {rel}")
+    for rel in result["drift"]:
+        print(f"drift: {rel} — current hash differs from the manifest")
+    if result["drift"] and not args.force:
+        print("openshelf: manifest left unchanged; inspect the drifted files, "
+              "or re-run with --force to re-stamp them", file=sys.stderr)
+        return 1
+    print(f"{result['manifest']}: {len(result['added'])} added, {len(result['dropped'])} dropped, "
+          f"{result['unchanged']} unchanged, {len(result['drift'])} drifted — "
+          f"manifest {'rewritten' if result['written'] else 'already up to date'}")
     return 0
 
 
@@ -96,6 +121,12 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("uid", help="mint any missing KB and page uids (the §4.1 adoption path)")
     p.add_argument("path", nargs="?", default=".")
     p.set_defaults(func=_uid)
+
+    p = sub.add_parser("checksums", help="generate or update the checksums manifest for a KB's raw sources")
+    p.add_argument("path", nargs="?", default=".")
+    p.add_argument("--force", action="store_true",
+                   help="re-stamp files whose hash has drifted from the manifest instead of refusing")
+    p.set_defaults(func=_checksums)
 
     p = sub.add_parser("add", help="connect a KB to this project")
     p.add_argument("source", help="github:owner/repo, a git URL, or a local path relative to the project root")

@@ -110,7 +110,9 @@ def test_declared_files_and_sources_are_not_pages(tmp_path):
     write(root / "notes/src/article.md", "raw text\n")
     write(root / "p.md", page("P"))
     write(root / "_draft.md", "ignored\n")
-    assert lint(root) == []
+    assert errors(root) == []
+    # The source file is not a page; that no page cites it is only a warning.
+    assert warnings(root) == ["notes/src/article.md: raw source is not cited by any page"]
 
 
 def test_custom_type_must_be_declared(kb):
@@ -183,7 +185,10 @@ def test_advisory_field_shape_is_a_warning(kb):
 def test_sources_string_shorthand(kb):
     write(kb / "raw/note.md", "raw\n")
     write(kb / "wiki/a.md", page("A", sources="[https://example.com/post, raw/note.md]"))
-    assert lint(kb) == []
+    assert errors(kb) == []
+    # The shorthand is accepted, but a string cannot carry a retrieval date.
+    assert warnings(kb) == ["wiki/a.md: sources URL 'https://example.com/post' has no 'retrieved' date; "
+                            "add one via the object form so the citation can be re-checked"]
 
 
 def test_sources_missing_path_is_a_warning(kb):
@@ -226,9 +231,52 @@ def test_source_sha256_and_checksums_manifest(kb):
     write(kb / "raw/MANIFEST.sha256", f"{digest}  raw/paper.pdf\n")
     with open(kb / "kb.yaml", "a") as f:
         f.write("layout: {checksums: raw/MANIFEST.sha256}\n")
-    assert lint(kb) == []
+    assert errors(kb) == []
+    # Page A no longer cites the file; being in the manifest is not a citation.
+    assert warnings(kb) == ["raw/paper.pdf: raw source is not cited by any page"]
     write(kb / "raw/paper.pdf", "tampered\n")
     assert "raw/MANIFEST.sha256: sha256 mismatch: raw/paper.pdf" in errors(kb)
+
+
+def test_orphan_raw_source_is_a_warning(kb):
+    write(kb / "raw/orphan.md", "raw\n")
+    assert errors(kb) == []
+    assert warnings(kb) == ["raw/orphan.md: raw source is not cited by any page"]
+    # Citing it from a page's sources clears the warning.
+    write(kb / "wiki/a.md", page("A", sources="[raw/orphan.md]"))
+    assert lint(kb) == []
+
+
+def test_body_file_link_counts_as_a_citation(kb):
+    write(kb / "raw/linked.md", "raw\n")
+    write(kb / "wiki/a.md", page("A", body="Grounded in [the capture](../raw/linked.md)."))
+    assert lint(kb) == []
+    # A link inside a code span is not a citation.
+    write(kb / "wiki/a.md", page("A", body="As text: `[the capture](../raw/linked.md)`"))
+    assert warnings(kb) == ["raw/linked.md: raw source is not cited by any page"]
+
+
+def test_uncited_manifest_and_gitkeep_are_not_orphans(kb):
+    write(kb / "raw/MANIFEST.sha256", "not even a real manifest\n")
+    assert lint(kb) == []  # raw/.gitkeep (from init) is a placeholder too
+
+
+def test_duplicate_source_url_is_a_warning(kb):
+    entry = "{url: https://example.com/paper, retrieved: 2026-10-31}"
+    write(kb / "wiki/a.md", page("A", sources=f"[{entry}]"))
+    write(kb / "wiki/b.md", page("B", sources=f"[{entry}]"))
+    assert errors(kb) == []
+    assert warnings(kb) == ["wiki/a.md: sources URL 'https://example.com/paper' is cited by "
+                            "more than one page: wiki/a.md, wiki/b.md"]
+
+
+def test_source_url_retrieved_warning(kb):
+    write(kb / "wiki/a.md", page("A", sources="[{url: https://example.com/no-date}]"))
+    assert errors(kb) == []
+    assert warnings(kb) == ["wiki/a.md: sources URL 'https://example.com/no-date' has no 'retrieved' date; "
+                            "add one via the object form so the citation can be re-checked"]
+    write(kb / "wiki/a.md", page("A", sources="[{url: https://example.com/dated, retrieved: 2026-10-31}]"))
+    assert lint(kb) == []
 
 
 def test_declared_subindex(kb):

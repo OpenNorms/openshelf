@@ -31,6 +31,7 @@ pip install git+https://github.com/OpenNorms/openshelf
 
 openshelf init my-kb --description "One line saying what this KB covers."   # new KB, default layout, CC-BY-4.0
 openshelf lint my-kb                                    # check it against the spec
+openshelf checksums my-kb                               # generate/update the raw-source checksums manifest (refuses over drift unless --force)
 
 cd my-project
 openshelf add github:someone/some-kb --use "when the task involves X"        # connect a KB

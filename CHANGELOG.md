@@ -28,6 +28,18 @@ ones.
   every endpoint against the KBs and `uid`s recorded in `kbs.lock`,
   reporting dangling pages, unconnected KBs, and unrecorded `uid`s as
   project lint errors.
+- `openshelf checksums` generates or updates a KB's checksums manifest
+  (the writer half of §2's `layout.checksums`; lint remains the verifier).
+  It stamps every file under the sources directory in `sha256sum` format,
+  adds new files and drops vanished ones, and refuses to rewrite over a
+  file whose hash has drifted from the manifest unless `--force`
+  re-stamps it. Without a declared `layout.checksums` it writes
+  `MANIFEST.sha256` into the sources directory and says so.
+- `openshelf lint` source-citation hygiene warnings (#55): a raw source
+  cited by no page (neither a `sources` entry nor a Markdown file link),
+  the same external URL cited as a source by more than one page, and a
+  URL citation with no `retrieved` date. All three are warnings, never
+  errors.
 
 ## [1.6] - 2026-11-02
 
