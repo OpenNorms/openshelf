@@ -9,6 +9,7 @@ from functools import cache
 from pathlib import Path
 
 import jsonschema
+import yaml
 
 from .kb import KB, KBError, heading_slugs
 
@@ -70,7 +71,133 @@ def _schema_messages(name: str, data: object) -> list[str]:
 PAGE_MUST_FIELDS = {"title", "summary", "redirect"}
 
 
+def _lint_relation_overlay(root: Path) -> list[Issue]:
+    """Validate a composing project's §6.1 relation overlay, if it has one.
+
+    Findings are reported against the overlay in the project, never against
+    a referenced KB: an endpoint that does not resolve at the revision
+    pinned in kbs.lock is a composition error (§6.1).
+    """
+    from . import project as project_module
+
+    where = f"{project_module.DIR}/relations.yaml"
+    path = root / where
+    issues: list[Issue] = []
+
+    def err(message: str) -> None:
+        issues.append(Issue("error", where, message))
+
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        return [Issue("error", where, f"cannot read relation overlay: {e}")]
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as e:
+        return [Issue("error", where, f"invalid YAML: {e}")]
+
+    schema_messages = _schema_messages("relations.schema.json", data)
+    if schema_messages:
+        return [Issue("error", where, message) for message in schema_messages]
+    relations = data.get("relations") if isinstance(data, dict) else None
+    if not isinstance(relations, list):
+        return issues
+
+    try:
+        config = project_module.load(root)
+    except project_module.ProjectError as e:
+        return [Issue("error", where, str(e))]
+    entries = {entry["id"]: entry for entry in config["kbs"]}
+
+    lock_path = root / project_module.DIR / project_module.LOCK
+    lock: dict = {}
+    if lock_path.is_file():
+        try:
+            loaded_lock = yaml.safe_load(lock_path.read_text(encoding="utf-8")) or {}
+        except (OSError, UnicodeDecodeError, yaml.YAMLError) as e:
+            return [Issue("error", lock_path.relative_to(root).as_posix(), f"invalid {project_module.LOCK}: {e}")]
+        if not isinstance(loaded_lock, dict):
+            return [Issue("error", lock_path.relative_to(root).as_posix(), f"invalid {project_module.LOCK}: not a mapping")]
+        lock = loaded_lock.get("kbs") or {}
+        if not isinstance(lock, dict):
+            return [Issue("error", lock_path.relative_to(root).as_posix(), f"invalid {project_module.LOCK}: 'kbs' is not a mapping")]
+
+    uid_to_id: dict[str, str] = {}
+    for kb_id, lock_entry in lock.items():
+        if isinstance(lock_entry, dict) and isinstance(lock_entry.get("uid"), str):
+            uid_to_id[lock_entry["uid"]] = kb_id
+
+    loaded: dict[str, KB | None] = {}
+    load_errors: dict[str, str] = {}
+
+    def connected_kb(kb_id: str) -> KB | None:
+        if kb_id in loaded:
+            return loaded[kb_id]
+        entry = entries.get(kb_id)
+        if entry is None:
+            lock_entry = lock.get(kb_id)
+            if isinstance(lock_entry, dict) and isinstance(lock_entry.get("source"), str):
+                entry = {"id": kb_id, "source": lock_entry["source"]}
+            else:
+                load_errors[kb_id] = f"KB '{kb_id}' is recorded in {project_module.LOCK} but has no connection in {project_module.KBS}"
+        if kb_id not in load_errors:
+            try:
+                loaded[kb_id] = KB(project_module.kb_root(root, entry))
+            except KBError as e:
+                load_errors[kb_id] = str(e)
+                loaded[kb_id] = None
+        return loaded.get(kb_id)
+
+    def check_endpoint(index: int, field: str, endpoint: object) -> None:
+        if not isinstance(endpoint, str) or not endpoint.startswith("kb://"):
+            return
+        authority, separator, page_id = endpoint[len("kb://"):].partition("/")
+        if not separator:
+            return
+        page_id = page_id.partition("#")[0]
+        if authority.startswith("uid:"):
+            uid = authority[len("uid:"):]
+            kb_id = uid_to_id.get(uid)
+            if kb_id is None:
+                err(f"relation {index + 1}: {field} endpoint '{endpoint}' uses uid '{uid}', "
+                    f"which is not recorded in {project_module.LOCK}")
+                return
+        else:
+            kb_id = authority
+            if kb_id not in lock:
+                err(f"relation {index + 1}: {field} endpoint '{endpoint}' references KB '{kb_id}', "
+                    f"which is not connected in {project_module.LOCK}")
+                return
+        kb = connected_kb(kb_id)
+        if kb is None:
+            err(f"relation {index + 1}: {field} endpoint '{endpoint}' cannot be resolved: "
+                f"{load_errors.get(kb_id, f'KB {kb_id!r} could not be loaded')}")
+        elif page_id not in kb.pages:
+            err(f"relation {index + 1}: {field} endpoint '{endpoint}' references page '{page_id}' in KB "
+                f"'{kb_id}', which does not exist at the pinned revision")
+
+    for index, relation in enumerate(relations):
+        if not isinstance(relation, dict):
+            continue
+        for field in ("from", "to"):
+            check_endpoint(index, field, relation.get(field))
+    return issues
+
+
 def lint(root: str | Path) -> list[Issue]:
+    root_path = Path(root)
+    project_dir = root_path / ".openshelf"
+    is_project = (project_dir / "kbs.yaml").is_file()
+    has_overlay = is_project and (project_dir / "relations.yaml").is_file()
+    if has_overlay and not (root_path / "kb.yaml").is_file():
+        return _lint_relation_overlay(root_path)
+    issues = _lint_kb(root)
+    if has_overlay:
+        issues.extend(_lint_relation_overlay(root_path))
+    return issues
+
+
+def _lint_kb(root: str | Path) -> list[Issue]:
     try:
         kb = KB(root)
     except KBError as e:

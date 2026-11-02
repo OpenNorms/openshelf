@@ -18,6 +18,12 @@ ones.
   cuts a GitHub release; package metadata now carries the project URLs and
   the README documents the version policy (tool X.Y.Z implements spec X.Y).
   First publish waits on the one-time PyPI trusted-publisher setup.
+- `openshelf lint` now validates a composing project's
+  `.openshelf/relations.yaml` (§6.1): it schema-checks the overlay (whose
+  endpoint pattern now accepts the `kb://uid:<uid>/...` form) and resolves
+  every endpoint against the KBs and `uid`s recorded in `kbs.lock`,
+  reporting dangling pages, unconnected KBs, and unrecorded `uid`s as
+  project lint errors.
 
 ## [1.6] - 2026-11-02
 
