@@ -11,7 +11,7 @@ from pathlib import Path
 import jsonschema
 import yaml
 
-from .kb import KB, KBError, heading_slugs
+from .kb import KB, KBError, extract_links, heading_slugs
 
 CORE_TYPES = {"overview", "source", "entity", "concept", "comparison", "synthesis", "answer"}
 INDEX_TOKEN_BUDGET = 4000
@@ -351,6 +351,66 @@ def _lint_kb(root: str | Path) -> list[Issue]:
             for field in ("status", "last_checked"):
                 if field not in meta:
                     warn(where, f"awesome profile: entity has no {field}")
+
+    # Source-citation hygiene (§4.2, §7): warnings only — these are
+    # SHOULD/OPTIONAL-level conventions, never errors. A raw source earns
+    # its place by being cited; a URL citation without a retrieval date
+    # cannot be re-checked against drift; and the same URL cited from
+    # several pages is usually one source that wants one home.
+    cited: set[Path] = set()
+    url_pages: dict[str, set[str]] = {}
+    for pid, page in kb.pages.items():
+        meta = page.meta
+        if not isinstance(meta, dict) or "__error__" in meta:
+            continue
+        where = rel(page.path)
+        sources = meta.get("sources")
+        if isinstance(sources, list):
+            for src in sources:
+                surl = None
+                if isinstance(src, str):
+                    if "://" in src:
+                        surl = src  # string shorthand cannot carry a date
+                    else:
+                        cited.add((kb.root / src).resolve())
+                elif isinstance(src, dict):
+                    if isinstance(src.get("path"), str):
+                        cited.add((kb.root / src["path"]).resolve())
+                    if isinstance(src.get("url"), str):
+                        surl = src["url"]
+                        if not src.get("retrieved"):
+                            warn(where, f"sources URL '{surl}' has no 'retrieved' date; "
+                                        "add one via the object form so the citation can be re-checked")
+                if surl is not None:
+                    if isinstance(src, str):
+                        warn(where, f"sources URL '{surl}' has no 'retrieved' date; "
+                                    "add one via the object form so the citation can be re-checked")
+                    url_pages.setdefault(surl, set()).add(where)
+        for style, target in extract_links(page.body):
+            if style != "md":
+                continue
+            base = target.partition("#")[0]
+            if not base or "://" in base:
+                continue
+            cited.add((page.path.parent / base).resolve())
+    for surl, wheres in sorted(url_pages.items()):
+        if len(wheres) > 1:
+            ordered = sorted(wheres)
+            warn(ordered[0], f"sources URL '{surl}' is cited by more than one page: {', '.join(ordered)}")
+    sources_dir = kb.path("sources")
+    checksums_rel = kb.layout.get("checksums")
+    manifest = (kb.root / checksums_rel).resolve() if isinstance(checksums_rel, str) and checksums_rel \
+        else sources_dir / "MANIFEST.sha256"
+    if sources_dir.is_dir():
+        for p in sorted(sources_dir.rglob("*")):
+            if not p.is_file() or p.resolve() == manifest:
+                continue
+            # Dot-prefixed names (.gitkeep and friends) are placeholders,
+            # not sources — the same exclusion the checksums tool applies.
+            if any(part.startswith(".") for part in p.relative_to(sources_dir).parts):
+                continue
+            if p.resolve() not in cited:
+                warn(rel(p), "raw source is not cited by any page")
 
     if m.get("unique-names") is True:
         by_name: dict[str, list[str]] = {}
