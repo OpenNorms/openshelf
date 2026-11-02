@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/hexsecs/openshelf/schemas/kb.schema.json",
+  "$id": "https://hexsecs.github.io/openshelf/schemas/kb.schema.json",
   "title": "OpenShelf manifest (kb.yaml)",
   "type": "object",
   "required": ["openshelf", "id", "title", "description"],

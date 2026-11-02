@@ -11,6 +11,18 @@ ones.
 
 ## [Unreleased]
 
+## [1.2] - 2026-11-02
+
+### Changed
+
+- The specification and its schemas are published at
+  <https://hexsecs.github.io/openshelf/>: the current spec under `/spec/`,
+  each release archived under `/spec/<version>/`, and the schemas under
+  `/schemas/`. The schemas' `$id`s are now those published URLs (they
+  previously pointed at `github.com` URLs that did not resolve to the JSON).
+- The repository is renamed `hexsecs/openkb` → `hexsecs/openshelf`, matching
+  the name the schemas and README always used; the old URLs redirect.
+
 ## [1.1] - 2026-11-02
 
 ### Added

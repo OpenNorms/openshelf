@@ -1,4 +1,4 @@
-# OpenShelf Specification — v1.1
+# OpenShelf Specification — v1.2
 
 OpenShelf standardizes the **LLM Wiki** pattern described by Andrej Karpathy
 ([gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)).
@@ -25,6 +25,11 @@ normative only in the contract sections (Part I); the convention sections
 (Part II) are non-normative unless a KB opts into a profile (§9), in which
 case that profile's key words carry the same force as Part I for that KB.
 
+This specification and its schemas are published at
+<https://hexsecs.github.io/openshelf/>: the current spec under `/spec/`, each
+release archived under `/spec/<version>/`, and the schemas under `/schemas/`
+— the schemas' `$id`s are those published URLs.
+
 ---
 
 ## 1. Design principles
@@ -47,7 +52,7 @@ A KB is a directory with a `kb.yaml` file at its root. This file is the only
 fixed path in the spec.
 
 ```yaml
-openshelf: "1.1"                 # REQUIRED  spec version
+openshelf: "1.2"                 # REQUIRED  spec version
 id: awesome-can-bus           # REQUIRED  [a-z0-9-], unique per publisher
 uid: 0193f8c2-7a1b-7c3d-8e4f-5a6b7c8d9e0f  # SHOULD  UUID, minted once, never changes
 title: Awesome CAN bus        # REQUIRED
@@ -284,7 +289,7 @@ The index MAY be written by hand, by the LLM, or generated from frontmatter.
 A project lists its KBs in `.openshelf/kbs.yaml`:
 
 ```yaml
-openshelf: "1.1"
+openshelf: "1.2"
 kbs:
   - id: awesome-can-bus
     source: github:hexsecs/awesome-can-bus   # github:owner/repo, git URL, or local path

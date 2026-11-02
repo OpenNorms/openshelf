@@ -14,7 +14,8 @@ The gist leaves layout, page formats and tooling open, and OpenShelf keeps it th
 
 ## Contents
 
-- [`SPEC.md`](SPEC.md): the v1.1 spec
+- [`SPEC.md`](SPEC.md): the v1.2 spec — also published, with the schemas, at [hexsecs.github.io/openshelf](https://hexsecs.github.io/openshelf/)
+- [`CHANGELOG.md`](CHANGELOG.md): the spec's release history (every spec change bumps the version, §10)
 - [`schemas/`](schemas/): JSON Schemas for `kb.yaml`, page frontmatter and `.openshelf/kbs.yaml`
 - [`src/openshelf/`](src/openshelf/): the `openshelf` command-line tool
 - [`examples/awesome-can-bus/`](examples/awesome-can-bus/): a small awesome-profile KB using the default layout
@@ -59,9 +60,23 @@ claude mcp add --scope project openshelf -- openshelf mcp
 
 Other clients take the same command, `openshelf mcp`, run from the project directory (or pass `--project <dir>`).
 
+## Editor support
+
+For YAML validation in editors that use the YAML language server, point a
+file at its published schema with a first-line comment:
+
+```yaml
+# yaml-language-server: $schema=https://hexsecs.github.io/openshelf/schemas/kb.schema.json
+```
+
+The same works for page frontmatter with `page.schema.json`, a project's
+`.openshelf/kbs.yaml` with `project.schema.json`, and a relation overlay with
+`relations.schema.json`, all under the same `/schemas/` base URL.
+
 ## Status
 
-Draft. See the [roadmap](https://github.com/hexsecs/openshelf/issues/2) for what's next.
+Stable — spec v1.2. Changes to the spec are released as new spec versions and
+recorded in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License
 
