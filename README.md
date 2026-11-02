@@ -14,7 +14,7 @@ The gist leaves layout, page formats and tooling open, and OpenShelf keeps it th
 
 ## Contents
 
-- [`SPEC.md`](SPEC.md): the v1.5 spec — also published, with the schemas, at [hexsecs.github.io/openshelf](https://hexsecs.github.io/openshelf/)
+- [`SPEC.md`](SPEC.md): the v1.6 spec — also published, with the schemas, at [opennorms.github.io/openshelf](https://opennorms.github.io/openshelf/)
 - [`CHANGELOG.md`](CHANGELOG.md): the spec's release history (every spec change bumps the version, §10)
 - [`schemas/`](schemas/): JSON Schemas for `kb.yaml`, page frontmatter and `.openshelf/kbs.yaml`
 - [`src/openshelf/`](src/openshelf/): the `openshelf` command-line tool
@@ -27,7 +27,7 @@ The gist leaves layout, page formats and tooling open, and OpenShelf keeps it th
 The `openshelf` command (Python 3.10+) works with any KB that meets the spec:
 
 ```sh
-pip install git+https://github.com/hexsecs/openshelf
+pip install git+https://github.com/OpenNorms/openshelf
 
 openshelf init my-kb --description "One line saying what this KB covers."   # new KB, default layout, CC-BY-4.0
 openshelf lint my-kb                                    # check it against the spec
@@ -54,7 +54,7 @@ Point your project's `AGENTS.md` or `CLAUDE.md` at `.openshelf/context.md`. `ope
 It is read-only and re-reads the files on every call, so edits show up without a restart. Links come back resolved, including `kb://` links into other KBs. Install it with the `mcp` extra and add it to Claude Code from your project directory:
 
 ```sh
-pip install "openshelf[mcp] @ git+https://github.com/hexsecs/openshelf"
+pip install "openshelf[mcp] @ git+https://github.com/OpenNorms/openshelf"
 claude mcp add --scope project openshelf -- openshelf mcp
 ```
 
@@ -66,7 +66,7 @@ For YAML validation in editors that use the YAML language server, point a
 file at its published schema with a first-line comment:
 
 ```yaml
-# yaml-language-server: $schema=https://hexsecs.github.io/openshelf/schemas/kb.schema.json
+# yaml-language-server: $schema=https://opennorms.github.io/openshelf/schemas/kb.schema.json
 ```
 
 The same works for page frontmatter with `page.schema.json`, a project's
@@ -75,7 +75,7 @@ The same works for page frontmatter with `page.schema.json`, a project's
 
 ## Status
 
-Stable — spec v1.5. Changes to the spec are released as new spec versions and
+Stable — spec v1.6. Changes to the spec are released as new spec versions and
 recorded in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License

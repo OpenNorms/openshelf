@@ -11,6 +11,20 @@ ones.
 
 ## [Unreleased]
 
+## [1.6] - 2026-11-02
+
+### Changed
+
+- **Publication moved to the OpenNorms organization.** The repository
+  transferred from `hexsecs/openshelf` to `OpenNorms/openshelf` (the
+  owner's decision; OpenShelf is OpenNorms' bootstrap document), and the
+  canonical publication is now <https://opennorms.github.io/openshelf/>:
+  the spec under `/spec/`, archives under `/spec/<version>/`, schemas
+  under `/schemas/`, with the schemas' `$id`s updated to the new host.
+  All `github.com` and git URLs for the repository redirect from the old
+  location; the old Pages URLs do not redirect (GitHub does not redirect
+  Pages on transfer) and are retired. No normative behavior changes.
+
 ## [1.5] - 2026-11-02
 
 From #46: composition addressed KBs entirely by their self-asserted `id`
