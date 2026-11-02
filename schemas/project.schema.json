@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/hexsecs/openshelf/schemas/project.schema.json",
+  "$id": "https://hexsecs.github.io/openshelf/schemas/project.schema.json",
   "title": "OpenShelf project connections (.openshelf/kbs.yaml)",
   "type": "object",
   "required": ["openshelf", "kbs"],
