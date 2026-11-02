@@ -108,6 +108,26 @@ A page's **id** is its path relative to `layout.pages`, without `.md`, using
 layout. Ids are what links and other KBs use, so renaming or moving a page
 SHOULD leave a redirect (§4.4).
 
+A page SHOULD also carry a persistent **`uid`** in its frontmatter (§4.2): a
+UUID minted once, when the page first enters a KB, and never changed
+afterwards. The path id says where the page lives today; the `uid` identifies
+the page itself, across renames, moves within a KB, and moves between KBs —
+a genuine move keeps its `uid`. Copying a page's content into another KB
+creates a new page, which MUST be minted a fresh `uid`; only a move preserves
+one. Tooling that creates pages (ingesters, scaffolders) MUST mint the `uid`
+at creation and preserve it verbatim on every rewrite, exactly as it does
+`created`: set once, never regenerated. Consumers MUST treat the `uid` as an
+opaque string; any UUID version is valid, and UUIDv7 is RECOMMENDED for new
+pages because it sorts by creation time. A `uid` is not a content hash: it
+does not change when the page's content does.
+
+Cross-KB references (§4.4, §6.1) MAY cite a page by `uid` so they survive
+renames; consumers resolve a `uid` through an index of `uid` → current
+location built at sync or composition time. If two pages in one composition
+carry the same `uid`, they are the same page appearing twice — a move in
+flight, or a copy that kept a `uid` it should not have — and composition
+tooling SHOULD flag it.
+
 ### 4.2 Frontmatter
 
 Pages MUST have YAML frontmatter with these fields:
@@ -121,6 +141,7 @@ And SHOULD have:
 
 | Field     | Rule                                                              |
 |-----------|-------------------------------------------------------------------|
+| `uid`     | Persistent page identifier (UUID); minted once at creation, never changes, see §4.1 |
 | `type`    | A page type, see §4.3                                             |
 | `created` | Date the page first entered the KB (`YYYY-MM-DD`); set once, never changes |
 | `updated` | Date of last substantive change (`YYYY-MM-DD`)                    |
