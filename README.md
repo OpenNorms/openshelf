@@ -73,6 +73,23 @@ The same works for page frontmatter with `page.schema.json`, a project's
 `.openshelf/kbs.yaml` with `project.schema.json`, and a relation overlay with
 `relations.schema.json`, all under the same `/schemas/` base URL.
 
+## GitHub Action
+
+A KB repo can lint itself in CI with the composite action in this repo:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: OpenNorms/openshelf/action@v1
+  with:
+    paths: .        # KB paths to lint, space-separated
+    strict: true    # optional: fail on warnings too (default false)
+```
+
+Findings appear as annotations on the offending files. The action installs
+the tool from the ref it is used at, so the lint rules match the pinned
+action version; set the `version` input to install a specific PyPI release
+instead. This repo's own CI lints its example KBs through the action.
+
 ## Status
 
 Stable — spec v1.6. Changes to the spec are released as new spec versions and

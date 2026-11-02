@@ -18,6 +18,10 @@ ones.
   cuts a GitHub release; package metadata now carries the project URLs and
   the README documents the version policy (tool X.Y.Z implements spec X.Y).
   First publish waits on the one-time PyPI trusted-publisher setup.
+- A composite GitHub Action (`action/`) runs `openshelf lint` with
+  `paths`/`strict` inputs and emits findings as file annotations (#9);
+  this repo's CI lints the examples through it, and the README documents
+  it for KB repos.
 - `openshelf lint` now validates a composing project's
   `.openshelf/relations.yaml` (§6.1): it schema-checks the overlay (whose
   endpoint pattern now accepts the `kb://uid:<uid>/...` form) and resolves

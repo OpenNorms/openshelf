@@ -18,5 +18,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e '.[test]'
       - run: pytest -q
-      - name: Lint example KBs
-        run: openshelf lint examples/awesome-can-bus examples/openshelf-design
+      - name: Lint example KBs (through the lint action)
+        uses: ./action
+        with:
+          paths: examples/awesome-can-bus examples/openshelf-design
