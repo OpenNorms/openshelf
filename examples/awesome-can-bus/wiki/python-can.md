@@ -1,4 +1,5 @@
 ---
+uid: 01a19d2e-d814-74ff-8d51-a2a7e4aa39ba
 title: python-can
 summary: Python library for sending and receiving CAN messages across many interfaces, including SocketCAN.
 type: entity

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from functools import cache
@@ -9,7 +10,7 @@ from pathlib import Path
 
 import jsonschema
 
-from .kb import KB, KBError
+from .kb import KB, KBError, heading_slugs
 
 CORE_TYPES = {"overview", "source", "entity", "concept", "comparison", "synthesis", "answer"}
 INDEX_TOKEN_BUDGET = 4000
@@ -43,6 +44,12 @@ def validator(name: str) -> jsonschema.protocols.Validator:
 
 def estimate_tokens(text: str) -> int:
     return len(text) // 4
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    h.update(path.read_bytes())
+    return h.hexdigest()
 
 
 def _schema_errors(name: str, data: object) -> list[tuple[list, str]]:
@@ -83,6 +90,30 @@ def lint(root: str | Path) -> list[Issue]:
         if field not in m:
             warn("kb.yaml", f"no {field}")
 
+    # A declared checksums manifest (§2) is verified in full: it is the
+    # mechanism that makes "raw sources are immutable" (§7) checkable.
+    checksums_rel = kb.layout.get("checksums")
+    if isinstance(checksums_rel, str) and checksums_rel:
+        cpath = kb.root / checksums_rel
+        if not cpath.is_file():
+            err("kb.yaml", f"layout.checksums not found: {checksums_rel}")
+        else:
+            cwhere = cpath.relative_to(kb.root).as_posix()
+            for lineno, line in enumerate(cpath.read_text(encoding="utf-8").splitlines(), 1):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) != 2:
+                    warn(cwhere, f"line {lineno}: not in sha256sum format")
+                    continue
+                want, fname = parts[0].lower(), parts[1].lstrip("*").strip()
+                fpath = kb.root / fname
+                if not fpath.is_file():
+                    err(cwhere, f"listed file not found: {fname}")
+                elif _sha256(fpath) != want:
+                    err(cwhere, f"sha256 mismatch: {fname}")
+
     pages_dir, index = kb.path("pages"), kb.path("index")
     if not pages_dir.is_dir():
         err("kb.yaml", f"layout.pages directory not found: {kb.layout['pages']}")
@@ -109,6 +140,10 @@ def lint(root: str | Path) -> list[Issue]:
                     warn(rel(path), f"links into KB '{other}', which is not listed in depends")
             elif link.kind == "badprefix":
                 warn(rel(path), f"wikilink {link.raw} looks like a cross-KB link into '{link.target}', which is not listed in depends")
+            if link.kind == "page" and link.fragment:
+                final = kb.follow(link.target)
+                if final is not None and link.fragment not in heading_slugs(kb.pages[final].body):
+                    warn(rel(path), f"link {link.raw} points at section '#{link.fragment}', which page '{final}' does not have")
         return found
 
     # Pages reachable from the index, directly or through sub-indexes.
@@ -157,6 +192,9 @@ def lint(root: str | Path) -> list[Issue]:
                     err(where, f"sources path '{spath}' points outside the KB")
                 elif not (kb.root / spath).exists():
                     warn(where, f"sources path '{spath}' not found in the KB")
+                elif isinstance(src, dict) and isinstance(src.get("sha256"), str) \
+                        and _sha256(kb.root / spath) != src["sha256"].lower():
+                    err(where, f"sources sha256 mismatch for '{spath}'")
         check_links(page.path, page.body)
         if pid not in reachable:
             err(where, "not reachable from the index")
@@ -166,6 +204,14 @@ def lint(root: str | Path) -> list[Issue]:
         ptype = meta.get("type")
         if isinstance(ptype, str) and ptype not in CORE_TYPES and ptype not in declared:
             warn(where, f"type '{ptype}' is not a core type and is not declared in kb.yaml types")
+        decl = declared.get(ptype) if isinstance(ptype, str) else None
+        if isinstance(decl, dict):
+            fields = decl.get("fields")
+            required = fields.get("required") if isinstance(fields, dict) else None
+            if isinstance(required, list):
+                for fname in required:
+                    if isinstance(fname, str) and fname not in meta:
+                        err(where, f"type '{ptype}' requires field '{fname}'")
         depth = meta.get("depth")
         budget = DEPTH_TOKEN_BUDGETS.get(depth, PAGE_TOKEN_BUDGET) if isinstance(depth, str) else PAGE_TOKEN_BUDGET
         if estimate_tokens(page.body) > budget:
@@ -178,5 +224,14 @@ def lint(root: str | Path) -> list[Issue]:
             for field in ("status", "last_checked"):
                 if field not in meta:
                     warn(where, f"awesome profile: entity has no {field}")
+
+    if m.get("unique-names") is True:
+        by_name: dict[str, list[str]] = {}
+        for pid in kb.pages:
+            by_name.setdefault(pid.rsplit("/", 1)[-1], []).append(pid)
+        for name, ids in sorted(by_name.items()):
+            if len(ids) > 1:
+                for pid in ids:
+                    err(rel(kb.pages[pid].path), f"duplicate page file name '{name}' (unique-names is set in kb.yaml)")
 
     return issues

@@ -1,4 +1,5 @@
 ---
+uid: 01a19d2e-d96b-7e52-8f8e-33f0c6026100
 title: The manifest declares the layout
 type: decision
 summary: KBs can be organized freely because consumers find everything through paths declared in kb.yaml.

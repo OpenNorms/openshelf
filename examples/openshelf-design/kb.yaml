@@ -1,5 +1,6 @@
-openshelf: "0.1"
+openshelf: "1.4"
 id: openshelf-design
+uid: 01a19d2e-d960-7ff3-8599-ee886b8471d1
 title: OpenShelf design notes
 description: >
   Why OpenShelf is shaped the way it is: the LLM Wiki pattern it builds on,

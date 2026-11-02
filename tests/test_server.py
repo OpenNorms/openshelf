@@ -13,6 +13,17 @@ from openshelf.init import init  # noqa: E402
 from openshelf.server import build_server  # noqa: E402
 
 
+def test_read_page_section(shelf: Path):
+    kb = shelf.parent / "notes"
+    write(kb / "wiki/sections.md", page("Sections", body="# Sections\n\n## Deep Dive\n\nThe deep text.\n\n## Other\n\nOther text.\n"))
+    result = ok(shelf, "read_page", kb="notes", page="sections#deep-dive")
+    assert result["section"] == "deep-dive"
+    assert "The deep text." in result["content"]
+    assert "Other text." not in result["content"]
+    message = error(shelf, "read_page", kb="notes", page="sections#nope")
+    assert "no section '#nope'" in message
+
+
 def call(root: Path, tool: str, **args):
     """Call a tool on a fresh in-process server; return (is_error, result)."""
 

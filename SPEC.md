@@ -1,4 +1,4 @@
-# OpenShelf Specification — v1.3
+# OpenShelf Specification — v1.4
 
 OpenShelf standardizes the **LLM Wiki** pattern described by Andrej Karpathy
 ([gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)).
@@ -52,7 +52,7 @@ A KB is a directory with a `kb.yaml` file at its root. This file is the only
 fixed path in the spec.
 
 ```yaml
-openshelf: "1.3"                 # REQUIRED  spec version
+openshelf: "1.4"                 # REQUIRED  spec version
 id: awesome-can-bus           # REQUIRED  [a-z0-9-], unique per publisher
 uid: 0193f8c2-7a1b-7c3d-8e4f-5a6b7c8d9e0f  # SHOULD  UUID, minted once, never changes
 title: Awesome CAN bus        # REQUIRED
@@ -65,6 +65,7 @@ layout:                       # OPTIONAL  where things are; defaults shown
   sources: raw                #   raw sources, if kept in the KB
   schema: AGENTS.md           #   instructions for the maintainer LLM
   log: log.md                 #   activity log
+  checksums: raw/MANIFEST.sha256  # OPTIONAL  sha256sum-format manifest lint verifies
 
 types: {}                     # OPTIONAL  custom page types, see §4.3
 profile: wiki                 # OPTIONAL  see §9
@@ -75,6 +76,7 @@ tags: [can, automotive]       # OPTIONAL
 depends: []                   # OPTIONAL  ids of KBs this one links into
 visibility: public            # OPTIONAL  public | internal | private; default public
 url: https://example.org/kb/  # OPTIONAL  published base URL of this KB, see §4.4
+unique-names: false           # OPTIONAL  when true, duplicate page file names are lint errors, see §4.4
 ```
 
 If `license` is absent, consumers MUST NOT assume one. `openshelf init` uses
@@ -105,15 +107,23 @@ a KB keeps its `uid` — it is the same KB, replicated; a fork that diverges is
 a new KB and MUST be minted a fresh `uid`. A project that connects KBs (§6)
 MAY record each KB's `uid` in `.openshelf/kbs.lock` alongside the pinned
 revision, so a consumer can verify it imported the KB it meant to; tooling
-SHOULD flag two connected KBs carrying the same `uid`.
+SHOULD flag two connected KBs carrying the same `uid`. Tools SHOULD mint a
+KB's `uid`, as they do page `uid`s (§4.1).
 
 All `layout` paths are relative to the KB root and MUST NOT point outside it.
 Consumers MUST use the declared paths and the defaults above for any that
 are missing. `layout.pages` MAY be `.` for a KB whose pages sit at the root.
 
+A KB MAY declare `layout.checksums`: a file in `sha256sum` format listing
+content hashes of files in the KB — typically its raw sources, which §7
+holds immutable. Lint MUST verify a declared manifest: a listed file that
+is missing, or whose hash does not match, is an error.
+
 Fields not defined here are allowed and MUST be ignored by consumers that
 don't understand them. Tool-specific settings SHOULD go under an `x-<tool>`
-key.
+key. A tool MAY keep sizeable settings in its own file and reference it
+from its key — `x-<tool>: {config: <path>}`, the path relative to the KB
+root.
 
 Schema: [`schemas/kb.schema.json`](schemas/kb.schema.json).
 
@@ -135,8 +145,11 @@ A **page** is any `.md` file under `layout.pages`, except:
 
 - the files declared as `layout.index`, `layout.schema` and `layout.log`,
   and anything under `layout.sources`;
-- sub-indexes: files with no frontmatter that are linked from the index (or
-  from another sub-index) and that themselves contain links;
+- sub-indexes: files declared with `type: index` in their frontmatter, and
+  — as a fallback for undeclared ones — files with no frontmatter that are
+  linked from the index (or from another sub-index) and that themselves
+  contain links. A declared sub-index SHOULD carry a `title`; it needs no
+  `summary`, and the page rules below do not apply to it;
 - files and directories whose name starts with `_` or `.`. Directories inside
 `layout.pages` are free-form: a KB MAY organize them by type, topic, date, or
 not at all.
@@ -160,6 +173,14 @@ at creation and preserve it verbatim on every rewrite, exactly as it does
 opaque string; any UUID version is valid, and UUIDv7 is RECOMMENDED for new
 pages because it sorts by creation time. A `uid` is not a content hash: it
 does not change when the page's content does.
+
+Minting a `uid` for every existing page once, when a KB adopts this
+specification, and preserving each from then on, conforms to the minting
+rule: for an adopted KB, the minting event is the adoption. Tools SHOULD do
+the minting (`openshelf uid` does, for pages and for the KB itself, §2)
+rather than the maintaining LLM: a UUID an LLM writes from memory is not
+reliably random, and a patterned or colliding `uid` is worse than a late
+one.
 
 Cross-KB references (§4.4, §6.1) MAY cite a page by `uid` so they survive
 renames; consumers MUST resolve a `uid` through an index of `uid` → current
@@ -197,7 +218,10 @@ is shorthand for `{path: <string>}`. Consumers MUST accept both forms. A
 `path` — in either form — is relative to the KB root, uses `/` separators,
 and MUST NOT point outside the KB: the same rule as §2's `layout` paths, so
 a citation stays valid when the page moves. Lint SHOULD check that a cited
-path exists.
+path exists. A path entry MAY also carry a `sha256`, the content hash of
+the cited file — for a local source the useful integrity fact, where
+`retrieved` is the one for a URL — and lint MUST report a mismatch as an
+error.
 
 Validators MUST grade schema findings by the field's normative level: a
 violation in a REQUIRED field (`title`, `summary`, `redirect`) is an error,
@@ -219,6 +243,20 @@ types:
   decision: A choice that was made, with the alternatives and the reasoning.
   recipe: Step-by-step instructions for one task.
 ```
+
+A type's value MAY instead be an object with a `description` and declared
+`fields`:
+
+```yaml
+types:
+  meeting:
+    description: Digested minutes of one meeting.
+    fields: {required: [date, attendees]}
+```
+
+Lint MUST report a page that is missing a field its type declares required
+as an error: the KB opted into the rule by declaring it. The plain-string
+form stays valid and declares no fields.
 
 ### 4.4 Links
 
@@ -244,6 +282,22 @@ Consumers MUST resolve a cross-KB link only when that KB is connected.
 When it is not, a renderer MUST show the link text — unless the target
 KB's published base `url` (§2) is known, for example from `kbs.lock`, in
 which case the renderer MAY link to `<url>/<page-id>` instead.
+
+A link MAY address a section of a page: `<page-id>#<heading-slug>` in
+either link style, and `kb://<kb-id>/<page-id>#<heading-slug>` across KBs.
+The slug is the GitHub heading slug: the heading text lowercased, with
+punctuation other than hyphens and underscores removed and spaces replaced
+by hyphens; a repeated heading takes a `-1`, `-2`, … suffix. Consumers
+that read pages by section — as §4.5 assumes for `deep` pages — MUST
+accept this form, and tools and APIs MUST treat it as addressing that
+section. Lint SHOULD flag a fragment that matches no heading in the
+target page.
+
+Because a bare file-name wikilink resolves only while the name is unique,
+adding a same-named page in another folder silently makes existing links
+ambiguous. A KB MAY set `unique-names: true` in `kb.yaml`; lint MUST then
+report a duplicate page file name as an error when it appears, instead of
+warnings later on every link that uses the name.
 
 A moved page MAY leave a stub at its old path with `redirect: <new-id>` in its
 frontmatter and no body. Consumers MUST follow it.
@@ -335,7 +389,7 @@ The index MAY be written by hand, by the LLM, or generated from frontmatter.
 A project lists its KBs in `.openshelf/kbs.yaml`:
 
 ```yaml
-openshelf: "1.3"
+openshelf: "1.4"
 kbs:
   - id: awesome-can-bus
     source: github:hexsecs/awesome-can-bus   # github:owner/repo, git URL, or local path
@@ -442,7 +496,7 @@ my-kb/
 
 | Gist layer  | Default location | Notes                                               |
 |-------------|------------------|-----------------------------------------------------|
-| Raw sources | `raw/`           | The LLM reads but never modifies them. They MAY live outside the KB (cited by URL) when they can't be redistributed. |
+| Raw sources | `raw/`           | The LLM reads but never modifies them. They MAY live outside the KB (cited by URL) when they can't be redistributed. A `layout.checksums` manifest (§2) makes the immutability verifiable. |
 | Wiki        | `wiki/`, `index.md`, `log.md` | Written by the LLM, read by people.    |
 | Schema      | `AGENTS.md`      | `CLAUDE.md` works too. Co-evolved by human and LLM. |
 
@@ -491,6 +545,10 @@ Created python-can; updated socketcan and the index.
 - Pages SHOULD state contradictions between sources on the page instead of
   silently picking one.
 - Claims no source backs SHOULD be marked, e.g. `(unverified)`.
+- Contradictions, unverified claims and possibly stale claims SHOULD be
+  marked with the standard callouts — `> [!contradiction]`,
+  `> [!unverified]`, `> [!stale]` (Obsidian callout syntax) — so tools can
+  find them across KBs.
 - Pages that outgrow the L2 budget SHOULD be split.
 
 ### 8.5 Tooling
@@ -570,4 +628,6 @@ breaking one — and MUST be recorded in
 [`CHANGELOG.md`](CHANGELOG.md), which follows the
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. A change
 with no version bump and no changelog entry is not a released change, and
-consumers are entitled to ignore it.
+consumers are entitled to ignore it. Changes SHOULD be batched into
+periodic releases rather than released one at a time, so consumers can
+follow the specification by following its releases.

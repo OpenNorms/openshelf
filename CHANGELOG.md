@@ -11,6 +11,45 @@ ones.
 
 ## [Unreleased]
 
+## [1.4] - 2026-11-02
+
+All items are from #41, a field report on adopting OpenShelf in an existing
+wiki; all are backward compatible.
+
+### Added
+
+- §4.2/§2: content hashes for local sources — an optional `sha256` on
+  `sources` entries (a mismatch is a lint error) and an optional
+  `layout.checksums` manifest in sha256sum format that lint verifies,
+  making §7's "raw sources are immutable" checkable.
+- §4: sub-indexes may be declared with `type: index` frontmatter (a title,
+  a "generated" marker, no summary needed); the no-frontmatter heuristic
+  remains the fallback.
+- §4.4: section addressing — `<page-id>#<heading-slug>` in both link
+  styles and in `kb://` links, with the GitHub slug rule including the
+  `-1`, `-2` dedup suffixes; lint flags fragments that match no heading.
+  The MCP server's `read_page` accepts the form and returns the section.
+- §4.4/§2: opt-in `unique-names: true` in kb.yaml — lint reports a
+  duplicate page file name as an error when it appears.
+- §4.1/§2: the uid adoption rule is now explicit — minting every uid once
+  when an existing KB adopts the spec conforms — and tools SHOULD mint
+  uids rather than the maintaining LLM. New `openshelf uid` command mints
+  any missing KB and page uids; `openshelf init` mints the KB uid.
+- §4.3: a type's declaration may be an object with `description` and
+  `fields: {required: [...]}`; lint errors when a page is missing a field
+  its type declares required. The plain-string form is unchanged.
+- §8.4: standard callout names — `[!contradiction]`, `[!unverified]`,
+  `[!stale]` — so tools can find them across KBs.
+
+### Changed
+
+- §2: a tool may keep its settings in its own file and reference it as
+  `x-<tool>: {config: <path>}`.
+- §10: changes SHOULD be batched into periodic releases rather than
+  released one at a time.
+- The examples are restamped to the current spec version and carry uids
+  (minted with `openshelf uid`); they previously declared 0.1.
+
 ## [1.3] - 2026-11-02
 
 ### Added

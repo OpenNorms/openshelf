@@ -1,4 +1,5 @@
 ---
+uid: 01a19d2e-d814-7c5b-b297-fe2b6c4ed530
 title: SocketCAN
 summary: Linux kernel CAN stack that exposes CAN interfaces as network devices used through the socket API.
 type: concept

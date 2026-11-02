@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 from . import SPEC_VERSION
-from .kb import MANIFEST
+from .kb import MANIFEST, mint_uid
 
 AGENTS_TEMPLATE = """\
 # Schema for this KB
@@ -40,7 +40,7 @@ def init(root: str | Path, *, id: str, title: str, description: str,
     (root / "wiki").mkdir(exist_ok=True)
     (root / "raw").mkdir(exist_ok=True)
     (root / "raw" / ".gitkeep").touch()
-    manifest: dict = {"openshelf": SPEC_VERSION, "id": id, "title": title, "description": description}
+    manifest: dict = {"openshelf": SPEC_VERSION, "id": id, "uid": mint_uid(), "title": title, "description": description}
     if visibility is not None:
         manifest["visibility"] = visibility
     # The CC-BY-4.0 default is skipped for a private KB (§2): its content is

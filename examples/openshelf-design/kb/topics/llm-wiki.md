@@ -1,4 +1,5 @@
 ---
+uid: 01a19d2e-d96b-7c70-b7c4-3429c27d93d5
 title: LLM Wiki pattern
 type: concept
 summary: An LLM incrementally compiles raw sources into a persistent, interlinked Markdown wiki that it keeps current.
