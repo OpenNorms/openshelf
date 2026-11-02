@@ -31,6 +31,7 @@ ARCHIVES = {
     "1.4": "864ff5b",
     "1.5": "8ce15dd",
     "1.6": "4e68917",
+    "1.7": "aeb9007",
 }
 
 SHELL = """<!DOCTYPE html>
