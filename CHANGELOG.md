@@ -11,6 +11,14 @@ ones.
 
 ## [Unreleased]
 
+### Added
+
+- Release machinery for #10: a tag-triggered workflow builds the sdist and
+  wheel, publishes to PyPI via trusted publishing (no stored tokens), and
+  cuts a GitHub release; package metadata now carries the project URLs and
+  the README documents the version policy (tool X.Y.Z implements spec X.Y).
+  First publish waits on the one-time PyPI trusted-publisher setup.
+
 ## [1.6] - 2026-11-02
 
 ### Changed

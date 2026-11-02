@@ -78,6 +78,16 @@ The same works for page frontmatter with `page.schema.json`, a project's
 Stable — spec v1.6. Changes to the spec are released as new spec versions and
 recorded in [`CHANGELOG.md`](CHANGELOG.md).
 
+## Releases and versions
+
+The package is published to PyPI as `openshelf` from tags (`vX.Y.Z`) via
+trusted publishing. The tool's version and the spec version move together:
+tool `X.Y.Z` fully implements spec `X.Y` (the `SPEC_VERSION` it reports),
+and patch releases fix tooling without changing spec conformance. A KB that
+declares `openshelf: "X.Y"` in `kb.yaml` can be used with any tool release
+whose spec version is the same major version and at least that minor, per
+the compatibility contract in spec §10.
+
 ## License
 
 - **Code** (`src/`, `tests/`, `schemas/`, CI): [MIT](LICENSE).
