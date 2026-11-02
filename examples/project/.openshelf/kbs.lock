@@ -1,4 +1,4 @@
-openshelf: '0.1'
+openshelf: '1.0'
 kbs:
   awesome-can-bus:
     source: ../awesome-can-bus

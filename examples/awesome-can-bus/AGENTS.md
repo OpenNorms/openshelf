@@ -1,6 +1,6 @@
 # Schema for this KB
 
-This is an OpenShelf knowledge base using the `awesome` profile (see OpenShelf `SPEC.md` v0.1). It follows the LLM Wiki pattern: `raw/` holds immutable sources, `wiki/` is maintained by you, and this file holds the conventions. The human and the LLM refine this file together over time.
+This is an OpenShelf knowledge base using the `awesome` profile (see OpenShelf `SPEC.md` v1.0). It follows the LLM Wiki pattern: `raw/` holds immutable sources, `wiki/` is maintained by you, and this file holds the conventions. The human and the LLM refine this file together over time.
 
 ## Conventions
 - Every listed tool, library or product is a `type: entity` page with `url`, `category`, `status` and `last_checked`.
