@@ -13,6 +13,12 @@ ones.
 
 ### Added
 
+- The README now explains the composable-KB model — self-describing,
+  addressable, `uid`-identified KBs composed read-only by a project via
+  `.openshelf/kbs.yaml` / `kbs.lock` / `context.md`, with relation
+  overlays (§6.1) — with Mermaid figures for composition, the progressive
+  context tiers, and cross-KB links vs overlays. Documentation only; no
+  spec change.
 - Release machinery for #10: a tag-triggered workflow builds the sdist and
   wheel, publishes to PyPI via trusted publishing (no stored tokens), and
   cuts a GitHub release; package metadata now carries the project URLs and
